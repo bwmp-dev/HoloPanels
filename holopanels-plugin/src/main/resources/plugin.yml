@@ -1,0 +1,32 @@
+name: HoloPanels
+version: ${project.version}
+main: dev.aether.holopanels.HoloPanelsPlugin
+api-version: '1.19'
+author: Aether
+description: Interactive in-world panels for Paper servers.
+depend: [packetevents]
+softdepend: [PlaceholderAPI]
+
+commands:
+  holopanels:
+    description: Manage HoloPanels boards and views.
+    usage: /holopanels <reload|validate|list|info|here|debug|refresh>
+    aliases: [hpanels]
+    permission: holopanels.admin
+
+permissions:
+  holopanels.use:
+    description: Allows interacting with HoloPanels boards.
+    default: true
+  holopanels.admin:
+    description: Allows administering HoloPanels.
+    default: op
+  holopanels.admin.reload:
+    description: Allows reloading and validating HoloPanels configuration.
+    default: op
+  holopanels.admin.move:
+    description: Allows moving HoloPanels boards.
+    default: op
+  holopanels.admin.debug:
+    description: Allows using HoloPanels interaction diagnostics.
+    default: op

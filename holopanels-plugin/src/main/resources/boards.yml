@@ -1,0 +1,2 @@
+# Place a configured board with /holopanels here <board> after adding it here.
+boards: {}

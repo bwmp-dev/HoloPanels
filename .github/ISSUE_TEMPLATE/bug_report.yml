@@ -1,0 +1,63 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [ bug ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most panel problems come down to either the configuration or the
+        rendering path, and they need different information. `/holopanels
+        validate` and `/holopanels debug` between them usually tell the whole
+        story, so please run both.
+
+  - type: input
+    id: version
+    attributes:
+      label: Server version and HoloPanels version
+      placeholder: Purpur 26.1.2, HoloPanels 0.1.0, packetevents 2.13.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected to see, and what you saw instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validate
+    attributes:
+      label: Output of /holopanels validate
+      description: Parses the whole configuration without applying it.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug
+    attributes:
+      label: Output of /holopanels debug
+      description: |
+        What is actually rendered to you, with line and click-region counts.
+        If a panel is missing entirely this is where it shows.
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: The board and view involved
+      description: |
+        The relevant entry from `boards.yml` and the file from `views/`. Worth
+        more than a description of them.
+      render: yaml
+
+  - type: textarea
+    id: providers
+    attributes:
+      label: Third-party providers
+      description: |
+        Any plugin registering an EntryProvider, ContentProvider,
+        ConditionEvaluator or ActionHandler. If content is wrong rather than
+        missing, the provider is the more likely culprit than HoloPanels.

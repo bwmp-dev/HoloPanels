@@ -1,0 +1,33 @@
+id: holopanels:example
+panels:
+  menu:
+    type: list
+    offset: { right: 0.0, up: 0.0, forward: 0.0 }
+    header:
+      - '<aqua><bold>HOLOPANELS</bold></aqua>'
+      - ''
+    entries:
+      welcome:
+        label: '<white>Welcome'
+        fields:
+          detail: '<white><bold>Welcome</bold></white>\n<gray>This panel is selected per player.'
+      commands:
+        label: '<white>Commands'
+        fields:
+          detail: '<white><bold>Commands</bold></white>\n<gray>Rows can run action chains.'
+    row: '<gray>  </gray><entry:label>'
+    selected-row: '<white>> </white><entry:label>'
+    clicks:
+      left:
+        - type: select
+      right:
+        - type: select
+
+  detail:
+    type: text
+    offset: { right: 4.6, up: 0.0, forward: 0.0 }
+    selection: menu
+    visible-if:
+      selected: menu
+    lines:
+      - '<entry:detail>'

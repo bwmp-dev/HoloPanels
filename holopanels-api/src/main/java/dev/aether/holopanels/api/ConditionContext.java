@@ -1,0 +1,28 @@
+package dev.aether.holopanels.api;
+
+import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+public record ConditionContext(
+        Player player,
+        NamespacedKey boardId,
+        NamespacedKey viewId,
+        String panelId,
+        Optional<PanelEntry> selectedEntry,
+        Map<String, String> arguments,
+        Map<String, String> sessionState
+) {
+    public ConditionContext {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(boardId, "boardId");
+        Objects.requireNonNull(viewId, "viewId");
+        Objects.requireNonNull(panelId, "panelId");
+        selectedEntry = Objects.requireNonNull(selectedEntry, "selectedEntry");
+        arguments = Map.copyOf(arguments);
+        sessionState = Map.copyOf(sessionState);
+    }
+}

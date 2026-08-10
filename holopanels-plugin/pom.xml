@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Parented to keystone-parent for the shade and relocation setup, rather
+        than to holopanels-parent, which still aggregates this module.
+    -->
+    <parent>
+        <groupId>dev.bwmp</groupId>
+        <artifactId>keystone-parent</artifactId>
+        <!--
+            Deliberately carries no release-please annotation — this version
+            belongs to another repository, so it must not move with ours. The
+            token is left unwritten even in prose: the updater matches it by
+            raw string.
+        -->
+        <version>1.0.2</version>
+        <!--
+            Empty, so Maven resolves the parent from a repository rather than a
+            path on disk. It used to point at ../../Keystone, which only exists
+            in the monorepo this was developed in — a standalone clone would
+            warn on every build.
+
+            Keystone is published now, so this resolves from nexus.bwmp.dev
+            without installing it locally — but Maven reads a parent before the
+            project's own <repositories>, so that repository has to come from
+            settings.xml. See the README.
+        -->
+        <relativePath/>
+    </parent>
+
+    <groupId>dev.aether</groupId>
+    <artifactId>holopanels-plugin</artifactId>
+    <version>0.1.0-SNAPSHOT</version> <!-- x-release-please-version -->
+    <packaging>jar</packaging>
+
+    <name>HoloPanels Plugin</name>
+
+    <properties>
+        <keystone.libs.package>dev.aether.holopanels.libs</keystone.libs.package>
+        <paper.version>1.19.4-R0.1-SNAPSHOT</paper.version>
+        <packetevents.version>2.13.0</packetevents.version>
+        <placeholderapi.version>2.12.2</placeholderapi.version>
+        <junit.version>5.13.4</junit.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>codemc-releases</id>
+            <url>https://repo.codemc.io/repository/maven-releases/</url>
+        </repository>
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>dev.aether</groupId>
+            <artifactId>holopanels-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--
+            Adventure is EXCLUDED deliberately.
+
+            HoloPanels is Paper-only and hands Components straight to Paper's
+            display and packet APIs, and holopanels-api publishes Component on
+            its own surface for third-party providers. Taking Keystone's shaded
+            copy would relocate all of that into dev.aether.holopanels.libs.kyori
+            and none of it would line up with the server's own Adventure - so
+            the server's is used instead, and Keystone detects that at runtime
+            and sends natively rather than through BukkitAudiences.
+        -->
+        <dependency>
+            <groupId>dev.bwmp</groupId>
+            <artifactId>keystone-core</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.kyori</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>${paper.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-spigot</artifactId>
+            <version>${packetevents.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>${placeholderapi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>HoloPanels-${project.version}</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <!--
+                                Replaces the parent's relocation list rather
+                                than adding to it: inheriting the net.kyori
+                                entry is exactly what must not happen here.
+                            -->
+                            <relocations combine.self="override">
+                                <relocation>
+                                    <pattern>dev.bwmp.keystone.</pattern>
+                                    <shadedPattern>${keystone.libs.package}.keystone.</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

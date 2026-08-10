@@ -1,0 +1,15 @@
+# MiniMessage. Placeholders such as <board> are inserted as literal text and
+# are never re-parsed, so a value cannot smuggle formatting into a message.
+prefix: '<dark_gray>[</dark_gray><aqua>HoloPanels</aqua><dark_gray>]</dark_gray> '
+no-permission: '<red>You do not have permission to do that.'
+player-only: '<red>That command can only be used in game.'
+usage: '<gray>Use <yellow>/holopanels help<gray> for a list of commands.'
+reload-complete: '<green>Reloaded <boards> board(s) and <views> view(s).'
+reload-failed: '<red>Reload failed; the previous configuration is still active. Check the console.'
+validate-complete: '<green>Configuration is valid: <boards> board(s), <views> view(s).'
+board-not-found: '<red>No board exists with id <white><board></white>.'
+board-not-positioned: '<yellow>Board <white><board></white> has no usable anchor.'
+board-moved: '<green>Moved <white><board></white> to your position.'
+action-failed: '<red>That action could not be completed.'
+list-header: '<gray>Loaded boards:'
+list-entry: '<dark_gray>-</dark_gray> <white><board></white> <gray>→ <view> (<state>)'

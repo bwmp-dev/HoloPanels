@@ -1,0 +1,31 @@
+# Build output
+target/
+dependency-reduced-pom.xml
+
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and local scratch
+*.log
+*.hprof
+run/
+server/
+test-server/

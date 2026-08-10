@@ -1,0 +1,24 @@
+visibility-check-ticks: 10
+placeholder-refresh-ticks: 20
+movement-threshold: 0.5
+default-visibility-distance: 24.0
+default-click-distance: 6.0
+
+limits:
+  panels-per-view: 12
+  lines-per-panel: 64
+  entries-per-provider: 500
+  actions-per-chain: 16
+
+style:
+  line-height: 0.25
+  click-offset-y: 0.0
+  interaction-width: 4.0
+  line-width: 200
+  background-color: '#0b1420'
+  background-opacity: 0.65
+  text-opacity: 255
+  alignment: left
+  billboard: fixed
+  text-shadow: false
+  see-through: false

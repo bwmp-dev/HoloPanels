@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 (2026-08-10)
+
+
+### Features
+
+* initial release of HoloPanels ([8fddd82](https://github.com/bwmp-dev/HoloPanels/commit/8fddd8237f09b4ca2079c2aa9f0edc8964e4b149))
+
+## Changelog
+
 Notable changes to HoloPanels. Versions follow [semantic versioning](https://semver.org);
 `holopanels-api` is the surface those promises apply to.
 

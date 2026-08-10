@@ -34,7 +34,7 @@
 
     <groupId>dev.aether</groupId>
     <artifactId>holopanels-plugin</artifactId>
-    <version>0.1.0-SNAPSHOT</version> <!-- x-release-please-version -->
+    <version>1.0.0</version> <!-- x-release-please-version -->
     <packaging>jar</packaging>
 
     <name>HoloPanels Plugin</name>

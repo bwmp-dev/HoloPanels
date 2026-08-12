@@ -1,0 +1,130 @@
+# A tabbed dashboard, with no list and no selection.
+#
+# Shows: session state used as a tab switch. `set-state` writes a value on the
+# viewer's session, and each content panel is gated on that value with a
+# `session-state` condition. The tab strip itself is one buttons panel that
+# renders the active tab differently by hiding one button and showing another.
+#
+# Session state is per player per board, so everyone gets their own tab.
+#
+# The numbers here come from PlaceholderAPI. Without it installed the tokens
+# render literally, which is a quick way to tell whether it is loaded.
+
+id: holopanels:stats
+
+panels:
+
+  tabs:
+    type: buttons
+    offset: { right: 0.0, up: 1.0, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    buttons:
+      # "You" is the default tab, so it is active whenever state has not been
+      # set to one of the others.
+      - id: you_active
+        text: '<white>▎<bold>You</bold>'
+        visible-if:
+          all:
+            - not: { session-state: { name: tab, equals: server } }
+            - not: { session-state: { name: tab, equals: world } }
+      - id: you_idle
+        text: '<dark_gray>▎<gray>You'
+        visible-if:
+          any:
+            - session-state: { name: tab, equals: server }
+            - session-state: { name: tab, equals: world }
+        clicks:
+          left:
+            - type: set-state
+              key: tab
+              value: you
+
+      - id: server_active
+        text: '<white>▎<bold>Server</bold>'
+        visible-if:
+          session-state: { name: tab, equals: server }
+      - id: server_idle
+        text: '<dark_gray>▎<gray>Server'
+        visible-if:
+          not: { session-state: { name: tab, equals: server } }
+        clicks:
+          left:
+            - type: set-state
+              key: tab
+              value: server
+
+      - id: world_active
+        text: '<white>▎<bold>World</bold>'
+        visible-if:
+          session-state: { name: tab, equals: world }
+      - id: world_idle
+        text: '<dark_gray>▎<gray>World'
+        visible-if:
+          not: { session-state: { name: tab, equals: world } }
+        clicks:
+          left:
+            - type: set-state
+              key: tab
+              value: world
+
+  you:
+    type: text
+    offset: { right: 0.0, up: 0.0, forward: 0.0 }
+    visible-if:
+      all:
+        - not: { session-state: { name: tab, equals: server } }
+        - not: { session-state: { name: tab, equals: world } }
+    style:
+      line-width: 220
+    lines:
+      - '<white><bold><player:name>'
+      - ''
+      - '<gray>Balance <dark_gray>·</dark_gray> <white>%vault_eco_balance_formatted%'
+      - '<gray>Playtime <dark_gray>·</dark_gray> <white>%statistic_time_played%'
+      - '<gray>Blocks mined <dark_gray>·</dark_gray> <white>%statistic_mine_block%'
+      - '<gray>Deaths <dark_gray>·</dark_gray> <white>%statistic_deaths%'
+
+  server:
+    type: text
+    offset: { right: 0.0, up: 0.0, forward: 0.0 }
+    visible-if:
+      session-state: { name: tab, equals: server }
+    style:
+      line-width: 220
+    lines:
+      - '<white><bold>Server'
+      - ''
+      - '<gray>Online <dark_gray>·</dark_gray> <white>%server_online%<gray>/<white>%server_max_players%'
+      - '<gray>TPS <dark_gray>·</dark_gray> <white>%server_tps_1_colored%'
+      - '<gray>Uptime <dark_gray>·</dark_gray> <white>%server_uptime%'
+      - '<gray>Version <dark_gray>·</dark_gray> <white>%server_version%'
+
+  world:
+    type: text
+    offset: { right: 0.0, up: 0.0, forward: 0.0 }
+    visible-if:
+      session-state: { name: tab, equals: world }
+    style:
+      line-width: 220
+    lines:
+      - '<white><bold>World'
+      - ''
+      - '<gray>World <dark_gray>·</dark_gray> <white>%player_world%'
+      - '<gray>Biome <dark_gray>·</dark_gray> <white>%player_biome%'
+      - '<gray>Time <dark_gray>·</dark_gray> <white>%player_world_time_12%'
+      - '<gray>Weather <dark_gray>·</dark_gray> <white>%essentials_weather%'
+
+  back:
+    type: buttons
+    offset: { right: 0.0, up: -1.1, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    buttons:
+      - id: back
+        text: '<dark_gray>[ <gray>Back</gray> <dark_gray>]'
+        clicks:
+          left:
+            - type: reset

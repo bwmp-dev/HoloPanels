@@ -3,23 +3,31 @@ package dev.aether.holopanels.runtime;
 import dev.aether.holopanels.api.PanelEntry;
 import org.bukkit.NamespacedKey;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A viewer's state for one board.
+ * <p>
+ * Almost everything here is read and written by the single thread that owns the
+ * player — their region thread on Folia, the main thread everywhere else. The
+ * exception is {@code invalidateContent}, which a provider plugin can reach for
+ * every viewer at once through the API, so the collections are concurrent
+ * rather than relying on that never overlapping with a render.
+ */
 public final class ViewerSession {
-    private NamespacedKey currentView;
-    private final Map<String, String> selections = new HashMap<>();
-    private final Map<String, Integer> pages = new HashMap<>();
-    private final Map<String, String> state = new HashMap<>();
-    private final Map<String, List<PanelEntry>> entries = new HashMap<>();
-    private final Map<String, Long> cooldowns = new HashMap<>();
-    private final Map<String, Integer> requests = new HashMap<>();
-    private final Set<String> loading = new HashSet<>();
-    private boolean hidden;
+    private volatile NamespacedKey currentView;
+    private final Map<String, String> selections = new ConcurrentHashMap<>();
+    private final Map<String, Integer> pages = new ConcurrentHashMap<>();
+    private final Map<String, String> state = new ConcurrentHashMap<>();
+    private final Map<String, List<PanelEntry>> entries = new ConcurrentHashMap<>();
+    private final Map<String, Long> cooldowns = new ConcurrentHashMap<>();
+    private final Map<String, Integer> requests = new ConcurrentHashMap<>();
+    private final Set<String> loading = ConcurrentHashMap.newKeySet();
+    private volatile boolean hidden;
     private int revision;
 
     public ViewerSession(NamespacedKey currentView) {

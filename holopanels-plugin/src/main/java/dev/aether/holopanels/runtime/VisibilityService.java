@@ -66,7 +66,17 @@ public final class VisibilityService {
         }
     }
 
+    /**
+     * The one place that reads a player's position and the world around them,
+     * which is why it is also the one place that has to care about which thread
+     * it is on. Every other caller can invoke this from wherever it happens to
+     * be and let it land itself.
+     */
     public void refresh(Player player) {
+        ServerThreads.atPlayer(scheduler, player, () -> render(player));
+    }
+
+    private void render(Player player) {
         ConfigSnapshot current = snapshot.get();
         List<RenderedPanel> panels = new ArrayList<>();
         for (BoardDefinition board : current.boards().values()) {

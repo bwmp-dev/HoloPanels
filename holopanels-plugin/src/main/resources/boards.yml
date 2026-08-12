@@ -1,2 +1,4 @@
-# Place a configured board with /holopanels here <board> after adding it here.
+# Add a board here, then place it in game: /holopanels wall <board> hangs it on
+# the block you are looking at, /holopanels here <board> puts it where you
+# stand. Both write the anchor back to this file.
 boards: {}

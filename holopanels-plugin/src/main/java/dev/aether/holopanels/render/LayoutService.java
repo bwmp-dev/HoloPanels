@@ -84,6 +84,11 @@ public final class LayoutService {
         int end = Math.min(entries.size(), start + panel.pageSize());
         for (int index = start; index < end; index++) {
             PanelEntry entry = entries.get(index);
+            if (entry.heading()) {
+                lines.add(templates.render(panel.headingRowTemplate(),
+                        player, board.id(), view.id(), Optional.of(entry), session.state()));
+                continue;
+            }
             boolean selected = session.selection(panel.id()).map(entry.id()::equals).orElse(false);
             int line = lines.size();
             lines.add(templates.render(selected ? panel.selectedRowTemplate() : panel.rowTemplate(),

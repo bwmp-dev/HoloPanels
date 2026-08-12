@@ -1,10 +1,10 @@
 # HoloPanels
 
-Interactive in-world panels for Paper servers. Text displays you can click, driven by config and extended by other plugins.
+Interactive in-world panels. Text displays you can click, driven by config and extended by other plugins.
 
 A panel is not a hologram with a command attached — it is a **view** made of panels, rendered per viewer, with its own conditions, pagination, selection state and click regions. Two players looking at the same board can see different things.
 
-Requires **Paper 1.19.4+** and [packetevents](https://github.com/retrooper/packetevents). Java 17+.
+Runs on **Minecraft 1.19.4 – 26.x**, on Paper, Purpur, Pufferfish and Folia, from one jar. Java 17+. Requires [packetevents](https://github.com/retrooper/packetevents).
 
 ---
 
@@ -15,6 +15,7 @@ Drop the jar in `plugins/`, start the server, then:
 ```
 /holopanels list                 boards and whether each one is placed
 /holopanels here <board>         move a board to where you stand
+/holopanels wall <board>         hang it on the block you are looking at
 /holopanels reload               re-read boards and views
 /holopanels validate             check the config without applying it
 /holopanels debug                what is currently rendered to you
@@ -24,6 +25,26 @@ Drop the jar in `plugins/`, start the server, then:
 Boards live in `boards.yml`, views in `views/`. A board is a position in the world; a view is what it shows. Point several boards at one view and you have the same panel in several places.
 
 `validate` is worth knowing about: it parses the whole configuration and reports problems **without** touching what is running, so you can check an edit before committing to it.
+
+---
+
+## Placing a board
+
+`here` puts a board at your feet facing the way you look. `wall` is usually what you want instead: it raycasts up to 12 blocks, sits the board just off the face it hit and works out the yaw so the board faces out of the wall.
+
+```
+/holopanels wall <board> [gap]                     against the block you are looking at
+/holopanels move <board> <x> <y> <z> [yaw]         exact coordinates
+/holopanels nudge <board> <direction> [distance]   shift it along its own axes
+/holopanels unplace <board>                        drop the anchor, keep the board
+/holopanels remove <board> confirm                 delete it from boards.yml
+```
+
+In `move`, `~` keeps the board's current value for that coordinate — `move welcome ~ ~1 ~` raises it a block and `move welcome ~ ~ ~ 90` turns it where it stands. `nudge` takes `right`, `left`, `up`, `down`, `forward` or `back` in the board's own axes, the same ones panel offsets use, so a placement can be trimmed by tenths without touching a config file.
+
+`unplace` and `remove` differ on purpose. `unplace` clears the anchor and leaves the board defined, ready to be placed again. `remove` deletes it from `boards.yml`, taking its view binding, distances and conditions with it — so it asks for `confirm` first.
+
+Every one of these writes `boards.yml` and reloads, which means the usual reload safety applies: if the resulting file does not parse, the running boards keep going and you get a log message. Comments in `boards.yml` survive the rewrite.
 
 ---
 
@@ -40,11 +61,36 @@ Content can be static, or supplied by another plugin through a **provider**. Tha
 
 ---
 
+## Examples
+
+[`examples/`](examples/) has six complete views that between them use every panel type, every built-in action and every condition kind — a warp directory with pagination and master–detail, a kit dispenser with click-to-confirm, a tabbed stats dashboard, a provider-fed leaderboard, a navigation hub and a dismissable notice board. Copy the ones you want into `plugins/HoloPanels/views/`.
+
+---
+
 ## Reload safety
 
 A reload builds the whole configuration first and only swaps it in if it parsed. A bad edit costs you a log message, not the plugin — the running boards keep working with the previous configuration until a valid one replaces it.
 
 Configuration is then held as an immutable snapshot behind a single volatile reference, so a player's render never observes a half-applied reload.
+
+---
+
+## Compatibility
+
+Purpur and Pufferfish are Paper forks and need nothing said about them — they are detected by probing for a class each one ships, never by reading a brand string, because forks routinely report themselves as their upstream.
+
+The one thing that genuinely moves across the supported range is the Text Display metadata layout. 1.20.2 inserted a second interpolation duration into the Display entity, pushing every text field up by one index. These are wire indices, so nothing at compile time would have caught sending the wrong set — the panel would simply have come out blank.
+
+| | Index layout |
+|---|---|
+| 1.19.4 – 1.20.1 | billboard 14, text 22 |
+| 1.20.2 and later | billboard 15, text 23 |
+
+Which one was picked is named in the startup block alongside the detected server and version, so a rendering bug report starts with the two facts it turns on.
+
+**Folia is supported.** There is no `BukkitRunnable` or `Bukkit.getScheduler()` anywhere in the plugin; scheduling goes through Keystone's abstraction with a region-threaded backend. A refresh reads the player's position and the world around them, so it puts itself on the thread that owns that player rather than assuming one exists, and viewer sessions are concurrent because on Folia no single thread owns them. Teleports use the async form, and a console click action is dispatched on the global region rather than the clicking player's.
+
+**Spigot is not supported**, and that is a consequence of the Adventure decision below rather than an oversight: `holopanels-api` publishes `Component` on its own surface, and bundling a relocated Adventure to reach Spigot would change that type out from under every provider written against it.
 
 ---
 
@@ -101,7 +147,9 @@ git clone https://github.com/bwmp-dev/Keystone && cd Keystone && mvn install
 
 ### A note on Adventure
 
-HoloPanels is the **Paper-only** Keystone build: it excludes Keystone's shaded Adventure and uses the server's own. That is not incidental. The renderer hands components straight to Paper's display APIs, and `holopanels-api` exposes `Component` on its own surface — relocating Adventure would move both into `dev.aether.holopanels.libs.kyori`, where neither lines up with the server, and every third-party provider would fail at runtime against a class name that looks correct.
+HoloPanels is the **Paper-family** Keystone build: it excludes Keystone's shaded Adventure and uses the server's own. That is not incidental. The renderer hands components straight to Paper's display APIs, and `holopanels-api` exposes `Component` on its own surface — relocating Adventure would move both into `dev.aether.holopanels.libs.kyori`, where neither lines up with the server, and every third-party provider would fail at runtime against a class name that looks correct.
+
+It is also what draws the line at Spigot rather than at Purpur, Pufferfish or Folia, all of which ship Paper's Adventure and need nothing further.
 
 CI asserts the jar contains no `kyori` classes for exactly this reason.
 

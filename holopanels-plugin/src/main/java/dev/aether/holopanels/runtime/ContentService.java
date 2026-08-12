@@ -11,7 +11,6 @@ import dev.aether.holopanels.model.StaticEntryDefinition;
 import dev.aether.holopanels.model.ViewDefinition;
 import dev.aether.holopanels.text.TemplateService;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -77,7 +76,7 @@ public final class ContentService {
         try {
             CompletionStage<List<PanelEntry>> stage = provider.get().entries(new EntryRequest(
                     player, board.id(), view.id(), panel.id(), session.state()));
-            stage.whenComplete((value, error) -> onMain(() -> {
+            stage.whenComplete((value, error) -> ServerThreads.atPlayer(scheduler, player, () -> {
                 if (!player.isOnline() || !session.currentRequest(requestKey, request)) {
                     session.finishRequest(requestKey);
                     return;
@@ -118,7 +117,8 @@ public final class ContentService {
         if (panel.contentProvider().isEmpty()) {
             return Optional.empty();
         }
-        String cacheKey = "content:" + view.id() + ":" + panel.id();
+        String selectionKey = selected.map(PanelEntry::id).orElse("none");
+        String cacheKey = "content:" + view.id() + ":" + panel.id() + ":" + selectionKey;
         Optional<List<PanelEntry>> cached = session.entries(cacheKey);
         if (cached.isPresent()) {
             return Optional.of(cached.get().stream().map(PanelEntry::label).toList());
@@ -135,7 +135,7 @@ public final class ContentService {
         try {
             provider.get().content(new ContentRequest(
                     player, board.id(), view.id(), panel.id(), selected, session.state()
-            )).whenComplete((value, error) -> onMain(() -> {
+            )).whenComplete((value, error) -> ServerThreads.atPlayer(scheduler, player, () -> {
                 if (!player.isOnline() || !session.currentRequest(cacheKey, request)) {
                     session.finishRequest(cacheKey);
                     return;
@@ -181,13 +181,5 @@ public final class ContentService {
             result.add(builder.build());
         }
         return List.copyOf(result);
-    }
-
-    private void onMain(Runnable runnable) {
-        if (Bukkit.isPrimaryThread()) {
-            runnable.run();
-        } else {
-            scheduler.run(runnable);
-        }
     }
 }

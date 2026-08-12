@@ -1,0 +1,127 @@
+# A leaderboard fed by another plugin.
+#
+# Shows: the three extension points that need a companion plugin —
+# `source.provider` (rows for a list), `content-provider` (lines for a text
+# panel) and `custom` (an action or a condition implemented in Java).
+#
+# Nothing in this file will render rows on its own. Until something registers
+# `example:top_balances`, the list falls back to its `empty` text and the
+# custom action answers "That action is unavailable" — HoloPanels does not
+# fail the reload over a provider that has not appeared yet, because plugin
+# load order is not something a config file can control.
+#
+# The registering side is four lines; see examples/README.md.
+
+id: holopanels:leaderboard
+
+panels:
+
+  title:
+    type: text
+    offset: { right: 0.0, up: 1.25, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    lines:
+      - '<gradient:#5eff9d:#5ee7ff><bold>RICHEST PLAYERS</bold></gradient>'
+
+  # Providers are asked off the main thread and their answer is cached on the
+  # viewer's session, so a database-backed leaderboard does not stall the tick.
+  # The first render shows `empty`, then redraws when the answer arrives.
+  board:
+    type: list
+    offset: { right: -2.2, up: 0.0, forward: 0.0 }
+    source:
+      provider: example:top_balances
+    style:
+      line-width: 200
+    page-size: 10
+    header:
+      - '<dark_gray>#  Player                    Balance'
+      - ''
+    # Field names are whatever the provider chose to attach to each entry.
+    row: '<dark_gray><entry:rank>  <gray><entry:label>  <white><entry:balance>'
+    selected-row: '<white>▸ <entry:rank>  <entry:label>  <entry:balance>'
+    empty: '<gray>Waiting for the leaderboard provider…'
+    clicks:
+      left:
+        - type: select
+
+  profile:
+    type: text
+    offset: { right: 2.4, up: 0.0, forward: 0.0 }
+    selection: board
+    visible-if:
+      selected: board
+    style:
+      line-width: 190
+    lines:
+      - '<white><bold><entry:label>'
+      - '<dark_gray>Rank <entry:rank>'
+      - ''
+      - '<gray>Balance <dark_gray>·</dark_gray> <white><entry:balance>'
+      - '<gray>Last seen <dark_gray>·</dark_gray> <white><entry:last_seen>'
+
+  # A text panel whose lines come from Java rather than from this file. Use it
+  # when the content is genuinely dynamic — a news feed, a queue, a build
+  # status — rather than a placeholder substitution.
+  news:
+    type: text
+    offset: { right: 0.0, up: -1.0, forward: 0.0 }
+    content-provider: example:server_news
+    style:
+      line-width: 240
+      background-opacity: 0.4
+
+  controls:
+    type: buttons
+    offset: { right: 0.0, up: -1.9, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    buttons:
+      - id: pager_previous
+        text: '<dark_gray>[ <white>◀</white> <dark_gray>]'
+        clicks:
+          left:
+            - type: previous-page
+              panel: board
+      - id: pager_next
+        text: '<dark_gray>[ <white>▶</white> <dark_gray>]'
+        clicks:
+          left:
+            - type: next-page
+              panel: board
+
+      # The built-in `refresh` action only redraws from the cached provider
+      # answer. To make the provider be asked again, the companion plugin calls
+      # HoloPanels#refresh(player, boardId) — which is what a custom action is
+      # for.
+      - id: recalculate
+        text: '<dark_gray>[ <aqua>Recalculate</aqua> <dark_gray>]'
+        visible-if:
+          # A condition implemented in Java. Arguments other than `id` are
+          # handed to the evaluator untouched.
+          custom:
+            id: example:has_recent_data
+            max-age-seconds: '300'
+        clicks:
+          left:
+            - type: custom
+              id: example:recalculate_balances
+              scope: 'top100'
+              cooldown-ticks: 200
+              cooldown-message: '<red>That is already running.'
+
+  back:
+    type: buttons
+    offset: { right: 0.0, up: -2.4, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    buttons:
+      - id: back
+        text: '<dark_gray>[ <gray>Back</gray> <dark_gray>]'
+        clicks:
+          left:
+            - type: reset

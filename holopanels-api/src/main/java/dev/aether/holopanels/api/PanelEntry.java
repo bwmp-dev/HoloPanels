@@ -8,6 +8,14 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public final class PanelEntry {
+    /**
+     * Attribute that marks an entry as a section heading rather than a row a
+     * player can act on. Set it to {@code "true"} and the list renders the entry
+     * with its {@code heading-row} template and gives it no click region, so it
+     * can never be selected or clicked through.
+     */
+    public static final String HEADING_ATTRIBUTE = "heading";
+
     private static final Pattern ID_PATTERN = Pattern.compile("[a-z0-9_.-]+");
 
     private final String id;
@@ -48,6 +56,10 @@ public final class PanelEntry {
 
     public String attribute(String name) {
         return attributes.getOrDefault(name, "");
+    }
+
+    public boolean heading() {
+        return "true".equals(attributes.get(HEADING_ATTRIBUTE));
     }
 
     private static String validateId(String id) {

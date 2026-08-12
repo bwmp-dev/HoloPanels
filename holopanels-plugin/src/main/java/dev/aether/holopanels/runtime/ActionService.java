@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 public final class ActionService {
@@ -87,7 +88,7 @@ public final class ActionService {
                                 : result);
             });
         }
-        chain.whenComplete((result, error) -> onMain(() -> {
+        chain.whenComplete((result, error) -> ServerThreads.atPlayer(scheduler, player, () -> {
             if (!player.isOnline()) {
                 return;
             }
@@ -236,7 +237,11 @@ public final class ActionService {
                 player.sendMessage(label);
                 yield success();
             }
-            case "teleport" -> teleport(player, board, view, entry, session, args);
+            // The two that read the player or hand them to somebody else's
+            // code. Every other case above touches only session state and
+            // outgoing packets, which are safe from any thread, so anchoring
+            // them too would only cost the chain a tick each on Folia.
+            case "teleport" -> atPlayer(player, () -> teleport(player, board, view, entry, session, args));
             case "set-state" -> {
                 session.state(args.getOrDefault("key", ""), args.getOrDefault("value", "true"));
                 yield success();
@@ -257,9 +262,38 @@ public final class ActionService {
                 session.reset(board.rootView());
                 yield success();
             }
-            case "custom" -> custom(player, board, view, panelId, entry, clickType, session, args);
+            case "custom" -> atPlayer(player, () ->
+                    custom(player, board, view, panelId, entry, clickType, session, args));
             default -> denied(player, board, view, entry, session, "<red>Unknown action: " + action.type());
         };
+    }
+
+    /**
+     * Starts {@code work} on the thread that owns the player and reports its
+     * result back into the chain.
+     * <p>
+     * Only needed once an earlier action in the same chain has completed
+     * asynchronously, which leaves the rest of the chain running on whichever
+     * thread that action finished on. The synchronous throw is caught here
+     * because {@code executeOne}'s guard sits on the calling thread and would
+     * no longer see it.
+     */
+    private CompletionStage<ActionResult> atPlayer(Player player, Supplier<CompletionStage<ActionResult>> work) {
+        CompletableFuture<ActionResult> result = new CompletableFuture<>();
+        ServerThreads.atPlayer(scheduler, player, () -> {
+            try {
+                work.get().whenComplete((value, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(error);
+                    } else {
+                        result.complete(value);
+                    }
+                });
+            } catch (RuntimeException exception) {
+                result.completeExceptionally(exception);
+            }
+        });
+        return result;
     }
 
     private CompletionStage<ActionResult> command(
@@ -281,11 +315,22 @@ public final class ActionService {
         if (command.isBlank()) {
             return denied(player, board, view, entry, session, "<red>No command was configured.");
         }
-        boolean dispatched = args.getOrDefault("executor", "player").equalsIgnoreCase("console")
-                ? Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command)
-                : Bukkit.dispatchCommand(player, command);
-        return CompletableFuture.completedFuture(dispatched ? ActionResult.success()
-                : ActionResult.failure(Component.text("The command was not accepted.")));
+        boolean console = args.getOrDefault("executor", "player").equalsIgnoreCase("console");
+        String dispatched = command;
+        CompletableFuture<ActionResult> result = new CompletableFuture<>();
+        // A console command belongs to no region and may touch any of them, so
+        // on Folia it goes to the global thread; a player's own command goes to
+        // the thread ticking that player. Off Folia both are the caller's.
+        Runnable dispatch = () -> result.complete(
+                Bukkit.dispatchCommand(console ? Bukkit.getConsoleSender() : player, dispatched)
+                        ? ActionResult.success()
+                        : ActionResult.failure(Component.text("The command was not accepted.")));
+        if (console) {
+            ServerThreads.global(scheduler, dispatch);
+        } else {
+            ServerThreads.atPlayer(scheduler, player, dispatch);
+        }
+        return result;
     }
 
     private CompletionStage<ActionResult> teleport(
@@ -310,8 +355,11 @@ public final class ActionService {
                     Float.parseFloat(args.getOrDefault("yaw", String.valueOf(current.getYaw()))),
                     Float.parseFloat(args.getOrDefault("pitch", String.valueOf(current.getPitch())))
             );
-            player.teleport(location);
-            return success();
+            // Folia has no synchronous teleport at all, and off Folia this
+            // still avoids teleporting inside event handling.
+            return scheduler.teleport(player, location).thenApply(moved -> moved
+                    ? ActionResult.success()
+                    : ActionResult.failure(Component.text("The teleport was refused.")));
         } catch (NumberFormatException exception) {
             return denied(player, board, view, entry, session, "<red>The teleport location is invalid.");
         }
@@ -370,14 +418,6 @@ public final class ActionService {
             return value == null ? fallback : Long.parseLong(value);
         } catch (NumberFormatException ignored) {
             return fallback;
-        }
-    }
-
-    private void onMain(Runnable runnable) {
-        if (Bukkit.isPrimaryThread()) {
-            runnable.run();
-        } else {
-            scheduler.run(runnable);
         }
     }
 }

@@ -1,0 +1,82 @@
+# A navigation hub.
+#
+# Shows: one board hosting several views. `open-view` swaps which view the
+# board renders for that one player; every sub-view here has a Back button
+# that calls `reset`, which returns the board to its configured root-view.
+#
+# Because the switch is per viewer, two players standing at the same board can
+# be looking at completely different screens.
+
+id: holopanels:hub
+
+panels:
+
+  # A panel's offset is its bottom edge and it grows upward, so a panel above
+  # another has to clear the *tallest* the one below can get. `nav` reaches five
+  # rows for staff — 5 x 0.25 line-height = 1.25 — so this sits just above that.
+  # Budgeting for four rows is what made this land on top of the first row.
+  title:
+    type: text
+    offset: { right: 0.0, up: 1.35, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    lines:
+      - '<gradient:#5ee7ff:#7a5cff><bold>SERVER HUB</bold></gradient>'
+      - '<gray>Pick somewhere to go.'
+
+  nav:
+    type: buttons
+    offset: { right: 0.0, up: 0.0, forward: 0.0 }
+    style:
+      line-width: 220
+      alignment: center
+    buttons:
+      - id: warps
+        text: '<white>Warps <dark_gray>— <gray>public destinations'
+        clicks:
+          left:
+            - type: open-view
+              view: holopanels:warps
+
+      - id: kits
+        text: '<white>Kits <dark_gray>— <gray>claim your starter gear'
+        clicks:
+          left:
+            - type: open-view
+              view: holopanels:kits
+
+      - id: stats
+        text: '<white>Stats <dark_gray>— <gray>you, the server, the world'
+        clicks:
+          left:
+            - type: open-view
+              view: holopanels:stats
+
+      - id: leaderboard
+        text: '<white>Leaderboards <dark_gray>— <gray>who is winning'
+        clicks:
+          left:
+            - type: open-view
+              view: holopanels:leaderboard
+
+      # Only rendered for staff. A hidden button has no click region at all,
+      # so this is not merely a cosmetic filter.
+      - id: staff
+        text: '<red>Staff tools'
+        visible-if:
+          permission: example.staff
+        clicks:
+          left:
+            - type: message
+              message: '<red>Staff panel would open here.'
+
+  # One line tall, so its own 0.25 has to fit between here and `nav` at 0.0.
+  footer:
+    type: text
+    offset: { right: 0.0, up: -0.35, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    lines:
+      - '<dark_gray>Left click a row to choose.'

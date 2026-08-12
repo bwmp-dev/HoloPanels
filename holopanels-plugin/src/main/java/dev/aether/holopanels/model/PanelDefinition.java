@@ -21,6 +21,7 @@ public record PanelDefinition(
         List<String> lines,
         String rowTemplate,
         String selectedRowTemplate,
+        String headingRowTemplate,
         String emptyText,
         int pageSize,
         List<ButtonDefinition> buttons,

@@ -3,20 +3,30 @@ package dev.aether.holopanels.command;
 import dev.aether.holopanels.HoloPanelsPlugin;
 import dev.aether.holopanels.config.ConfigException;
 import dev.aether.holopanels.model.BoardDefinition;
+import dev.aether.holopanels.model.BoardLocation;
 import dev.aether.holopanels.model.ConfigSnapshot;
+import dev.aether.holopanels.render.PanelGeometry;
 import dev.aether.holopanels.render.RenderedPanel;
+import dev.bwmp.keystone.command.CommandArguments;
 import dev.bwmp.keystone.command.CommandContext;
 import dev.bwmp.keystone.command.RootCommand;
 import dev.bwmp.keystone.command.SimpleSubcommand;
 import dev.bwmp.keystone.text.KeystoneText;
 import dev.bwmp.keystone.text.MessageService;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * The {@code /holopanels} command tree.
@@ -27,6 +37,17 @@ import java.util.Locale;
  * used to be an unguarded command.
  */
 public final class HoloPanelsCommand {
+
+    /** How far {@code wall} will look for a block to place against. */
+    private static final double WALL_REACH = 12.0;
+
+    /** Clearance left between the wall and the board, so the two do not z-fight. */
+    private static final double DEFAULT_WALL_GAP = 0.05;
+
+    private static final double DEFAULT_NUDGE = 0.1;
+
+    private static final List<String> DIRECTIONS =
+            List.of("right", "left", "up", "down", "forward", "back");
 
     private final HoloPanelsPlugin plugin;
     private final MessageService messages;
@@ -61,6 +82,54 @@ public final class HoloPanelsCommand {
                 .usage("here <board>")
                 .description("Move a board to your position")
                 .completer((sender, args) -> RootCommand.matching(boardIds(), args.get(0, ""))));
+
+        root.register(SimpleSubcommand.of("wall", this::wall)
+                .permission("holopanels.admin.move")
+                .requiresPlayer()
+                .usage("wall <board> [gap]")
+                .description("Place a board flat against the block you are looking at")
+                .completer((sender, args) -> args.size() <= 1
+                        ? RootCommand.matching(boardIds(), args.get(0, ""))
+                        : List.of()));
+
+        root.register(SimpleSubcommand.of("move", this::move)
+                .permission("holopanels.admin.move")
+                .usage("move <board> <x> <y> <z> [yaw]")
+                .description("Move a board to exact coordinates; ~ keeps a value")
+                .completer((sender, args) -> switch (args.size()) {
+                    case 0, 1 -> RootCommand.matching(boardIds(), args.get(0, ""));
+                    case 2, 3, 4, 5 -> RootCommand.matching(List.of("~"), args.get(args.size() - 1, ""));
+                    default -> List.of();
+                }));
+
+        root.register(SimpleSubcommand.of("nudge", this::nudge)
+                .permission("holopanels.admin.move")
+                .usage("nudge <board> <" + String.join("|", DIRECTIONS) + "> [distance]")
+                .description("Shift a placed board along its own axes")
+                .completer((sender, args) -> switch (args.size()) {
+                    case 0, 1 -> RootCommand.matching(boardIds(), args.get(0, ""));
+                    case 2 -> RootCommand.matching(DIRECTIONS, args.get(1, ""));
+                    default -> List.of();
+                }));
+
+        root.register(SimpleSubcommand.of("unplace", this::unplace)
+                .permission("holopanels.admin.move")
+                .usage("unplace <board>")
+                .description("Clear a board's anchor without deleting it")
+                .completer((sender, args) -> args.size() <= 1
+                        ? RootCommand.matching(boardIds(), args.get(0, ""))
+                        : List.of()));
+
+        root.register(SimpleSubcommand.of("remove", this::remove)
+                .aliases("delete")
+                .permission("holopanels.admin.remove")
+                .usage("remove <board> confirm")
+                .description("Delete a board from boards.yml")
+                .completer((sender, args) -> switch (args.size()) {
+                    case 0, 1 -> RootCommand.matching(boardIds(), args.get(0, ""));
+                    case 2 -> RootCommand.matching(List.of("confirm"), args.get(1, ""));
+                    default -> List.of();
+                }));
 
         root.register(SimpleSubcommand.of("debug", this::debug)
                 .permission("holopanels.admin.debug")
@@ -125,10 +194,8 @@ public final class HoloPanelsCommand {
     }
 
     private void info(CommandContext context) {
-        String raw = context.args().get(0, "");
-        BoardDefinition board = board(raw);
+        BoardDefinition board = board(context);
         if (board == null) {
-            messages.send(context.sender(), "board-not-found", MessageService.value("board", raw));
             return;
         }
 
@@ -144,24 +211,192 @@ public final class HoloPanelsCommand {
 
     private void here(CommandContext context) {
         Player player = context.requirePlayer();
-        String raw = context.args().get(0, "");
-        BoardDefinition board = board(raw);
+        BoardDefinition board = board(context);
         if (board == null) {
-            messages.send(context.sender(), "board-not-found", MessageService.value("board", raw));
+            return;
+        }
+        if (anchor(context, board, player.getLocation())) {
+            messages.send(context.sender(), "board-moved",
+                    MessageService.value("board", board.id().toString()));
+        }
+    }
+
+    private void wall(CommandContext context) {
+        Player player = context.requirePlayer();
+        BoardDefinition board = board(context);
+        if (board == null) {
             return;
         }
 
-        try {
-            plugin.configService().moveBoard(board.id(), player.getLocation());
-            if (plugin.reloadHoloPanels()) {
-                messages.send(context.sender(), "board-moved",
-                        MessageService.value("board", board.id().toString()));
-            } else {
-                messages.send(context.sender(), "reload-failed");
+        double gap = DEFAULT_WALL_GAP;
+        if (context.args().optional(1).isPresent()) {
+            OptionalDouble parsed = number(context.args().get(1, ""));
+            if (parsed.isEmpty() || parsed.getAsDouble() < 0.0 || parsed.getAsDouble() > 5.0) {
+                messages.send(context.sender(), "invalid-number",
+                        MessageService.value("value", context.args().get(1, "")));
+                return;
             }
-        } catch (ConfigException exception) {
-            plugin.getLogger().warning("Could not move board " + board.id() + ": " + exception.getMessage());
-            messages.send(context.sender(), "reload-failed");
+            gap = parsed.getAsDouble();
+        }
+
+        RayTraceResult trace = player.rayTraceBlocks(WALL_REACH, FluidCollisionMode.NEVER);
+        BlockFace face = trace == null ? null : trace.getHitBlockFace();
+        if (trace == null || trace.getHitBlock() == null || face == null) {
+            messages.send(context.sender(), "no-block-in-sight",
+                    MessageService.value("distance", decimal(WALL_REACH)));
+            return;
+        }
+
+        Vector normal = new Vector(face.getModX(), face.getModY(), face.getModZ());
+        Location location = trace.getHitPosition()
+                .add(normal.clone().multiply(gap))
+                .toLocation(player.getWorld());
+        // A board's normal is horizontal, so a floor or a ceiling gives it no
+        // facing of its own. Turn it toward whoever placed it instead.
+        location.setYaw(PanelGeometry.yawFacing(normal).orElseGet(() ->
+                PanelGeometry.yawFacing(player.getEyeLocation().toVector().subtract(location.toVector()))
+                        .orElse(PanelGeometry.normalizeYaw(player.getLocation().getYaw() + 180.0F))));
+        location.setPitch(0.0F);
+
+        if (anchor(context, board, location)) {
+            messages.send(context.sender(), "board-placed",
+                    MessageService.value("board", board.id().toString()),
+                    MessageService.value("face", face.name().toLowerCase(Locale.ROOT)),
+                    MessageService.value("position", position(location)));
+        }
+    }
+
+    private void move(CommandContext context) {
+        CommandArguments args = context.args();
+        BoardDefinition board = board(context);
+        if (board == null) {
+            return;
+        }
+        if (args.size() < 4) {
+            line(context.sender(), "<yellow>/holopanels move <board> <x> <y> <z> [yaw]"
+                    + " <dark_gray>- <gray>~ keeps the board's current value");
+            return;
+        }
+
+        // Coordinates are relative to where the board already is, so `~ ~1 ~`
+        // raises it and `~ ~ ~ 90` turns it in place. An unplaced board has
+        // nothing to be relative to, so it falls back to the sender.
+        Location origin = board.location().flatMap(BoardLocation::resolve)
+                .or(() -> context.player().map(Player::getLocation))
+                .orElse(null);
+        if (origin == null) {
+            messages.send(context.sender(), "board-not-positioned",
+                    MessageService.value("board", board.id().toString()));
+            return;
+        }
+
+        OptionalDouble x = coordinate(args.get(1, ""), origin.getX());
+        OptionalDouble y = coordinate(args.get(2, ""), origin.getY());
+        OptionalDouble z = coordinate(args.get(3, ""), origin.getZ());
+        OptionalDouble yaw = coordinate(args.get(4, "~"), origin.getYaw());
+        if (x.isEmpty() || y.isEmpty() || z.isEmpty() || yaw.isEmpty()) {
+            int bad = x.isEmpty() ? 1 : y.isEmpty() ? 2 : z.isEmpty() ? 3 : 4;
+            messages.send(context.sender(), "invalid-number",
+                    MessageService.value("value", args.get(bad, "")));
+            return;
+        }
+
+        Location location = new Location(origin.getWorld(), x.getAsDouble(), y.getAsDouble(), z.getAsDouble(),
+                PanelGeometry.normalizeYaw((float) yaw.getAsDouble()), 0.0F);
+        if (anchor(context, board, location)) {
+            messages.send(context.sender(), "board-repositioned",
+                    MessageService.value("board", board.id().toString()),
+                    MessageService.value("position", position(location)));
+        }
+    }
+
+    private void nudge(CommandContext context) {
+        CommandArguments args = context.args();
+        BoardDefinition board = board(context);
+        if (board == null) {
+            return;
+        }
+
+        Optional<Location> current = board.location().flatMap(BoardLocation::resolve);
+        if (current.isEmpty()) {
+            messages.send(context.sender(), "board-not-positioned",
+                    MessageService.value("board", board.id().toString()));
+            return;
+        }
+
+        String direction = args.lower(1);
+        if (!DIRECTIONS.contains(direction)) {
+            messages.send(context.sender(), "invalid-direction",
+                    MessageService.value("direction", args.get(1, "")),
+                    MessageService.value("directions", String.join(", ", DIRECTIONS)));
+            return;
+        }
+
+        double distance = DEFAULT_NUDGE;
+        if (args.optional(2).isPresent()) {
+            OptionalDouble parsed = number(args.get(2, ""));
+            if (parsed.isEmpty()) {
+                messages.send(context.sender(), "invalid-number",
+                        MessageService.value("value", args.get(2, "")));
+                return;
+            }
+            distance = parsed.getAsDouble();
+        }
+
+        // Board-relative, matching the axes a view's panel offsets use, so a
+        // nudge reads the same way as the offsets an admin already wrote.
+        Location moved = switch (direction) {
+            case "right" -> PanelGeometry.offset(current.get(), distance, 0.0, 0.0);
+            case "left" -> PanelGeometry.offset(current.get(), -distance, 0.0, 0.0);
+            case "up" -> PanelGeometry.offset(current.get(), 0.0, distance, 0.0);
+            case "down" -> PanelGeometry.offset(current.get(), 0.0, -distance, 0.0);
+            case "forward" -> PanelGeometry.offset(current.get(), 0.0, 0.0, distance);
+            default -> PanelGeometry.offset(current.get(), 0.0, 0.0, -distance);
+        };
+
+        if (anchor(context, board, moved)) {
+            messages.send(context.sender(), "board-nudged",
+                    MessageService.value("board", board.id().toString()),
+                    MessageService.value("direction", direction),
+                    MessageService.value("distance", decimal(distance)),
+                    MessageService.value("position", position(moved)));
+        }
+    }
+
+    private void unplace(CommandContext context) {
+        BoardDefinition board = board(context);
+        if (board == null) {
+            return;
+        }
+        if (board.location().isEmpty()) {
+            messages.send(context.sender(), "board-not-positioned",
+                    MessageService.value("board", board.id().toString()));
+            return;
+        }
+
+        if (edit(context, board, () -> plugin.configService().unplaceBoard(board.id()))) {
+            messages.send(context.sender(), "board-unplaced",
+                    MessageService.value("board", board.id().toString()));
+        }
+    }
+
+    private void remove(CommandContext context) {
+        BoardDefinition board = board(context);
+        if (board == null) {
+            return;
+        }
+        // Deleting a board takes its view binding, distances and conditions
+        // with it, and boards.yml is not versioned. Ask once.
+        if (!context.args().lower(1).equals("confirm")) {
+            messages.send(context.sender(), "board-remove-confirm",
+                    MessageService.value("board", board.id().toString()),
+                    MessageService.value("view", board.rootView().toString()));
+            return;
+        }
+
+        if (edit(context, board, () -> plugin.configService().removeBoard(board.id()))) {
+            messages.send(context.sender(), "board-removed",
+                    MessageService.value("board", board.id().toString()));
         }
     }
 
@@ -183,20 +418,86 @@ public final class HoloPanelsCommand {
             return;
         }
 
-        BoardDefinition board = board(raw);
+        BoardDefinition board = board(context);
         if (board == null) {
-            messages.send(context.sender(), "board-not-found", MessageService.value("board", raw));
             return;
         }
         plugin.api().refresh(board.id());
     }
 
-    private BoardDefinition board(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
+    /**
+     * The board named by the first argument, or {@code null} after telling the
+     * sender there is no such board. Every subcommand that takes a board id
+     * starts here, so the lookup and its failure message are written once.
+     */
+    private BoardDefinition board(CommandContext context) {
+        String raw = context.args().get(0, "");
+        NamespacedKey id = raw.isBlank() ? null : NamespacedKey.fromString(raw.toLowerCase(Locale.ROOT), plugin);
+        BoardDefinition board = id == null ? null : plugin.snapshot().boards().get(id);
+        if (board == null) {
+            messages.send(context.sender(), "board-not-found", MessageService.value("board", raw));
         }
-        NamespacedKey id = NamespacedKey.fromString(raw.toLowerCase(Locale.ROOT), plugin);
-        return id == null ? null : plugin.snapshot().boards().get(id);
+        return board;
+    }
+
+    /** Writes a board's anchor and reloads. Every placement subcommand ends here. */
+    private boolean anchor(CommandContext context, BoardDefinition board, Location location) {
+        return edit(context, board, () -> plugin.configService().moveBoard(board.id(), location));
+    }
+
+    /**
+     * Applies an edit to boards.yml and reloads, reporting either failure to
+     * the sender. Returns whether the caller should announce success.
+     */
+    private boolean edit(CommandContext context, BoardDefinition board, ConfigEdit change) {
+        try {
+            change.apply();
+        } catch (ConfigException exception) {
+            plugin.getLogger().warning("Could not edit board " + board.id() + ": " + exception.getMessage());
+            messages.send(context.sender(), "reload-failed");
+            return false;
+        }
+        if (!plugin.reloadHoloPanels()) {
+            messages.send(context.sender(), "reload-failed");
+            return false;
+        }
+        return true;
+    }
+
+    /** A coordinate argument, where {@code ~} and {@code ~n} are relative to {@code origin}. */
+    private OptionalDouble coordinate(String raw, double origin) {
+        if (!raw.startsWith("~")) {
+            return number(raw);
+        }
+        String offset = raw.substring(1);
+        if (offset.isEmpty()) {
+            return OptionalDouble.of(origin);
+        }
+        OptionalDouble parsed = number(offset);
+        return parsed.isPresent() ? OptionalDouble.of(origin + parsed.getAsDouble()) : parsed;
+    }
+
+    private OptionalDouble number(String raw) {
+        try {
+            double value = Double.parseDouble(raw);
+            return Double.isFinite(value) ? OptionalDouble.of(value) : OptionalDouble.empty();
+        } catch (NumberFormatException ignored) {
+            return OptionalDouble.empty();
+        }
+    }
+
+    private String decimal(double value) {
+        return String.format(Locale.ROOT, "%.2f", value);
+    }
+
+    private String position(Location location) {
+        return decimal(location.getX()) + ", " + decimal(location.getY()) + ", " + decimal(location.getZ())
+                + " (yaw " + decimal(location.getYaw()) + ")";
+    }
+
+    @FunctionalInterface
+    private interface ConfigEdit {
+        void apply() throws ConfigException;
     }
 
     private List<String> boardIds() {

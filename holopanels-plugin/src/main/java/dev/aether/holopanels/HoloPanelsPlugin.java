@@ -7,6 +7,7 @@ import dev.aether.holopanels.config.HoloConfigService;
 import dev.aether.holopanels.model.ConfigSnapshot;
 import dev.aether.holopanels.render.LayoutService;
 import dev.aether.holopanels.render.PacketPanelRenderer;
+import dev.aether.holopanels.render.TextDisplayMetadataSchema;
 import dev.aether.holopanels.runtime.ActionService;
 import dev.aether.holopanels.runtime.ConditionService;
 import dev.aether.holopanels.runtime.ContentService;
@@ -81,7 +82,8 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
                 keystone.registry("action"));
 
         sessions = new SessionManager();
-        renderer = new PacketPanelRenderer();
+        TextDisplayMetadataSchema schema = TextDisplayMetadataSchema.forVersion(keystone.platform().version());
+        renderer = new PacketPanelRenderer(schema);
         TemplateService templates = new TemplateService(getServer().getPluginManager());
         ConditionService conditions = new ConditionService(this, extensions);
         ContentService content = new ContentService(
@@ -92,7 +94,7 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
         ActionService actions = new ActionService(
                 this, scheduler, extensions, templates, messages, sessions, visibility, this::snapshot);
         InteractionService interactions = new InteractionService(this::snapshot, sessions, renderer, actions);
-        api = new HoloPanelsApiImpl(this, extensions, sessions, visibility, this::snapshot);
+        api = new HoloPanelsApiImpl(this, scheduler, extensions, sessions, visibility, this::snapshot);
 
         extensions.onChanged(() -> {
             sessions.clear();
@@ -106,6 +108,13 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
         new HoloPanelsCommand(this, messages).build().bind(this, "holopanels");
 
         visibility.start();
+        // Named at startup rather than left to be inferred from a bug report:
+        // which server this thinks it is on, and which display layout it picked
+        // from that, are the first two things a rendering problem turns on.
+        keystone.platform().describe().forEach(getLogger()::info);
+        if (schema.isLegacy()) {
+            getLogger().info("Layout:   pre-1.20.2 text display metadata");
+        }
         getLogger().info("HoloPanels enabled with " + snapshot.get().boards().size() + " board(s) and "
                 + snapshot.get().views().size() + " view(s).");
     }

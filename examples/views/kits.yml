@@ -1,0 +1,136 @@
+# A kit dispenser.
+#
+# Shows: the confirmation flow, per-action permissions with a custom denial
+# message, per-action cooldowns, and running a command as console rather than
+# as the player.
+#
+# `confirm-message` is the interesting one. The first click answers with the
+# message and arms a short window; a second click inside that window runs the
+# action. It costs no extra panels and no extra state to manage.
+
+id: holopanels:kits
+
+panels:
+
+  title:
+    type: text
+    offset: { right: 0.0, up: 1.15, forward: 0.0 }
+    style:
+      alignment: center
+      background-opacity: 0.0
+    lines:
+      - '<gradient:#ffd35e:#ff7a5c><bold>KITS</bold></gradient>'
+
+  list:
+    type: list
+    offset: { right: -2.4, up: 0.0, forward: 0.0 }
+    style:
+      line-width: 190
+    page-size: 6
+    header:
+      - '<gray>Click a kit to read what is in it.'
+      - ''
+    row: '<dark_gray>  </dark_gray><gray><entry:label>'
+    selected-row: '<white>▸ <entry:label>'
+    entries:
+      starter:
+        label: '<white>Starter'
+        fields:
+          cooldown: 'once per account'
+          contents: '<gray>Stone tools, 16 bread, a bed.'
+        attributes:
+          rank: 'none'
+      miner:
+        label: '<white>Miner'
+        fields:
+          cooldown: 'every 6 hours'
+          contents: '<gray>Iron pickaxe, 64 torches, 32 rails.'
+        attributes:
+          rank: 'none'
+      farmer:
+        label: '<white>Farmer'
+        fields:
+          cooldown: 'every 6 hours'
+          contents: '<gray>Hoe, bone meal, a spread of seeds.'
+        attributes:
+          rank: 'none'
+      adventurer:
+        label: '<yellow>Adventurer'
+        fields:
+          cooldown: 'daily'
+          contents: '<gray>Diamond sword, golden apples, ender pearls.'
+        attributes:
+          rank: 'vip'
+    clicks:
+      left:
+        - type: select
+      right:
+        - type: select
+
+  detail:
+    type: text
+    offset: { right: 2.4, up: 0.15, forward: 0.0 }
+    selection: list
+    visible-if:
+      selected: list
+    style:
+      line-width: 200
+    lines:
+      - '<white><bold><entry:label>'
+      - '<dark_gray>Available <entry:cooldown>'
+      - ''
+      - '<entry:contents>'
+
+  claim:
+    type: buttons
+    offset: { right: 2.4, up: -0.85, forward: 0.0 }
+    selection: list
+    visible-if:
+      selected: list
+    style:
+      background-opacity: 0.0
+    buttons:
+      - id: claim
+        text: '<dark_gray>[ <green>Claim this kit</green> <dark_gray>]'
+        clicks:
+          left:
+            - type: command
+              # Console runs it, so the player needs no permission for /kit
+              # itself — only for the button, checked just below.
+              executor: console
+              command: 'kit <entry_id> <player>'
+              permission: example.kits.claim
+              denied-message: '<red>Kits are unlocked once you have played for an hour.'
+              confirm-message: '<yellow>Click again to claim <white><entry:label><yellow>.'
+              confirm-seconds: 5
+              cooldown-ticks: 100
+              cooldown-message: '<red>Slow down.'
+            - type: title
+              title: '<green>Kit claimed'
+              subtitle: '<gray><entry:label>'
+              stay-ms: 1500
+
+      # A second button shown only for kits marked rank: vip, telling everyone
+      # else why the claim above will refuse them.
+      - id: vip_note
+        text: '<gold>✦ <gray>Requires VIP.'
+        visible-if:
+          all:
+            - entry-attribute:
+                name: rank
+                equals: 'vip'
+            - not:
+                permission: example.rank.vip
+
+  back:
+    type: buttons
+    offset: { right: 0.0, up: -1.5, forward: 0.0 }
+    style:
+      background-opacity: 0.0
+      alignment: center
+    buttons:
+      - id: back
+        text: '<dark_gray>[ <gray>Back</gray> <dark_gray>]'
+        clicks:
+          left:
+            - type: reset

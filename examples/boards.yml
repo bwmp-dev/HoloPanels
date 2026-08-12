@@ -1,0 +1,51 @@
+# Boards for the example views.
+#
+# A board is a position in the world plus who may see it; the view is what it
+# shows. `anchor` is filled in by /holopanels here <board>, so you can leave it
+# out entirely and place the board in game.
+#
+# Note `welcome` and `hub_board` below: two boards, one of which starts on a
+# different view of the same set. Views are global by id, so any board can
+# start on any view and navigate to any other.
+
+boards:
+
+  welcome:
+    root-view: holopanels:welcome
+    visibility-distance: 20.0
+    click-distance: 6.0
+
+  hub_board:
+    root-view: holopanels:hub
+    visibility-distance: 24.0
+    click-distance: 6.0
+
+  # A second copy of the hub somewhere else in the world. Same view, separate
+  # per-viewer session — walking between them does not carry your place.
+  hub_nether:
+    root-view: holopanels:hub
+    visibility-distance: 16.0
+
+  # Placed by the market, and only rendered for players who can actually use
+  # the warps behind it. A board that fails its condition is never rendered and
+  # never has a click region, so this is not a cosmetic filter.
+  warp_directory:
+    root-view: holopanels:warps
+    visibility-distance: 18.0
+    visible-if:
+      permission: example.warps.view
+
+  leaderboard:
+    root-view: holopanels:leaderboard
+    visibility-distance: 30.0
+    click-distance: 8.0
+
+  # Staff-only, and further restricted to players holding both nodes.
+  staff_stats:
+    root-view: holopanels:stats
+    visibility-distance: 12.0
+    visible-if:
+      all:
+        - permission: example.staff
+        - not:
+            permission: example.staff.hide_boards

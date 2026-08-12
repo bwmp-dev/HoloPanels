@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
 
     <name>HoloPanels</name>
-    <description>Interactive in-world panel framework for Paper servers.</description>
+    <description>Interactive in-world panel framework for Paper, Purpur, Pufferfish and Folia servers.</description>
 
     <licenses>
         <license>

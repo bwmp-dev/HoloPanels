@@ -3,14 +3,22 @@ version: ${project.version}
 main: dev.aether.holopanels.HoloPanelsPlugin
 api-version: '1.19'
 author: Aether
-description: Interactive in-world panels for Paper servers.
+description: Interactive in-world panels.
 depend: [packetevents]
 softdepend: [PlaceholderAPI]
+
+# Folia refuses to load any plugin that does not declare this, so the scheduler
+# abstraction would never get the chance to prove itself without it. The claim
+# is backed by there being no BukkitRunnable or Bukkit.getScheduler() call in
+# the plugin: scheduling goes through Keystone's scheduler, a refresh is placed
+# on the thread owning the player it redraws, and viewer sessions are concurrent
+# because on Folia no single thread owns them.
+folia-supported: true
 
 commands:
   holopanels:
     description: Manage HoloPanels boards and views.
-    usage: /holopanels <reload|validate|list|info|here|debug|refresh>
+    usage: /holopanels <reload|validate|list|info|here|wall|move|nudge|unplace|remove|debug|refresh>
     aliases: [hpanels]
     permission: holopanels.admin
 
@@ -25,7 +33,10 @@ permissions:
     description: Allows reloading and validating HoloPanels configuration.
     default: op
   holopanels.admin.move:
-    description: Allows moving HoloPanels boards.
+    description: Allows placing, moving and unplacing HoloPanels boards.
+    default: op
+  holopanels.admin.remove:
+    description: Allows deleting HoloPanels boards from boards.yml.
     default: op
   holopanels.admin.debug:
     description: Allows using HoloPanels interaction diagnostics.

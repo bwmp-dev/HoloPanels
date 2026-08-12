@@ -1,0 +1,56 @@
+# A greeting board for spawn.
+#
+# Shows: a plain text panel with PlaceholderAPI, a buttons panel, and the
+# "dismiss" pattern — `close` hides the board for that player until they
+# switch views or their session ends, so it suits a one-time notice.
+
+id: holopanels:welcome
+
+panels:
+
+  banner:
+    type: text
+    offset: { right: 0.0, up: 0.85, forward: 0.0 }
+    style:
+      line-width: 260
+      background-color: '#101c2c'
+      background-opacity: 0.80
+      alignment: center
+    lines:
+      - '<gradient:#5ee7ff:#7a5cff><bold>WELCOME</bold></gradient>'
+      - ''
+      - '<gray>Good to see you, <white><player:name></white>.'
+      - '<gray>Online now: <white>%server_online%<gray>/<white>%server_max_players%'
+      - '<gray>Your playtime: <white>%statistic_time_played%'
+
+  actions:
+    type: buttons
+    offset: { right: 0.0, up: -0.55, forward: 0.0 }
+    style:
+      background-opacity: 0.0
+      alignment: center
+    buttons:
+      - id: hub
+        text: '<dark_gray>[ <aqua>Open the hub</aqua> <dark_gray>]'
+        clicks:
+          left:
+            - type: open-view
+              view: holopanels:hub
+
+      - id: discord
+        text: '<dark_gray>[ <blue>Discord</blue> <dark_gray>]'
+        clicks:
+          left:
+            # `link` sends a clickable chat message. Panels cannot open a URL
+            # directly — the client only follows links from chat.
+            - type: link
+              url: 'https://discord.gg/example'
+              message: '<blue><underlined>Click to join the Discord</underlined>'
+
+      - id: dismiss
+        text: '<dark_gray>[ <gray>Dismiss</gray> <dark_gray>]'
+        clicks:
+          left:
+            - type: close
+            - type: action-bar
+              message: '<gray>Hidden until you rejoin. <dark_gray>(/holopanels refresh brings boards back)'

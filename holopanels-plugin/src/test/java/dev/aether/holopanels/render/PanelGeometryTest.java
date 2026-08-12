@@ -60,6 +60,37 @@ class PanelGeometryTest {
     }
 
     @Test
+    void yawFacingRoundTripsThroughNormalFor() {
+        for (float yaw : new float[]{0.0F, 90.0F, -90.0F, 180.0F, 37.5F}) {
+            Vector normal = PanelGeometry.normalFor(new Location(world, 0.0, 0.0, 0.0, yaw, 0.0F));
+
+            assertEquals(yaw, PanelGeometry.yawFacing(normal).orElseThrow(), 0.001);
+        }
+    }
+
+    @Test
+    void yawFacingMatchesTheCardinalBlockFaces() {
+        assertEquals(0.0F, PanelGeometry.yawFacing(new Vector(0, 0, 1)).orElseThrow(), 0.001);
+        assertEquals(180.0F, PanelGeometry.yawFacing(new Vector(0, 0, -1)).orElseThrow(), 0.001);
+        assertEquals(-90.0F, PanelGeometry.yawFacing(new Vector(1, 0, 0)).orElseThrow(), 0.001);
+        assertEquals(90.0F, PanelGeometry.yawFacing(new Vector(-1, 0, 0)).orElseThrow(), 0.001);
+    }
+
+    @Test
+    void yawFacingHasNoAnswerForAFloorOrCeiling() {
+        assertTrue(PanelGeometry.yawFacing(new Vector(0, 1, 0)).isEmpty());
+        assertTrue(PanelGeometry.yawFacing(new Vector(0, -1, 0)).isEmpty());
+    }
+
+    @Test
+    void normalizesYawIntoTheRangeMinecraftStores() {
+        assertEquals(0.0F, PanelGeometry.normalizeYaw(360.0F), 0.001);
+        assertEquals(-90.0F, PanelGeometry.normalizeYaw(270.0F), 0.001);
+        assertEquals(180.0F, PanelGeometry.normalizeYaw(-180.0F), 0.001);
+        assertEquals(10.0F, PanelGeometry.normalizeYaw(730.0F), 0.001);
+    }
+
+    @Test
     void offsetsInReaderRelativeAxes() {
         Location anchor = new Location(world, 10.0, 20.0, 30.0, 0.0F, 0.0F);
 

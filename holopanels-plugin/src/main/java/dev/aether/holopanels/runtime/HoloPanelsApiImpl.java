@@ -8,6 +8,7 @@ import dev.aether.holopanels.api.HoloPanels;
 import dev.aether.holopanels.api.Registration;
 import dev.aether.holopanels.model.BoardDefinition;
 import dev.aether.holopanels.model.ConfigSnapshot;
+import dev.bwmp.keystone.scheduler.KeystoneScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -19,6 +20,7 @@ import java.util.function.Supplier;
 
 public final class HoloPanelsApiImpl implements HoloPanels {
     private final JavaPlugin plugin;
+    private final KeystoneScheduler scheduler;
     private final ExtensionRegistry extensions;
     private final SessionManager sessions;
     private final VisibilityService visibility;
@@ -26,12 +28,14 @@ public final class HoloPanelsApiImpl implements HoloPanels {
 
     public HoloPanelsApiImpl(
             JavaPlugin plugin,
+            KeystoneScheduler scheduler,
             ExtensionRegistry extensions,
             SessionManager sessions,
             VisibilityService visibility,
             Supplier<ConfigSnapshot> snapshot
     ) {
         this.plugin = plugin;
+        this.scheduler = scheduler;
         this.extensions = extensions;
         this.sessions = sessions;
         this.visibility = visibility;
@@ -109,8 +113,14 @@ public final class HoloPanelsApiImpl implements HoloPanels {
         visibility.hide(player, boardId);
     }
 
+    /**
+     * Folia has no single server thread to require, so there the check is
+     * dropped rather than answered wrongly. Nothing behind these methods needs
+     * it there: the registries and viewer sessions are concurrent, and a
+     * refresh puts itself on the thread that owns the player it redraws.
+     */
     private void requireMainThread() {
-        if (!Bukkit.isPrimaryThread()) {
+        if (!scheduler.isFolia() && !Bukkit.isPrimaryThread()) {
             throw new IllegalStateException("HoloPanels API mutations must run on the server thread");
         }
     }

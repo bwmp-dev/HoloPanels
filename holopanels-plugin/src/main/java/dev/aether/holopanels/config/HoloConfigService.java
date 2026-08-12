@@ -67,17 +67,57 @@ public final class HoloConfigService {
 
     public void moveBoard(NamespacedKey id, Location location) throws ConfigException {
         YamlConfiguration yaml = loadYaml(boardsFile);
-        String path = "boards." + keyForConfig(id) + ".anchor";
-        if (!yaml.isConfigurationSection("boards." + keyForConfig(id))) {
-            throw new ConfigException("No configured board exists with id " + id);
-        }
+        String path = "boards." + configKeyOf(yaml, id) + ".anchor";
 
         yaml.set(path + ".world", location.getWorld().getName());
         yaml.set(path + ".x", location.getX());
         yaml.set(path + ".y", location.getY());
         yaml.set(path + ".z", location.getZ());
         yaml.set(path + ".yaw", location.getYaw());
+        // Always level. A board's normal is computed with the pitch discarded,
+        // so a tilted anchor would render where its click regions are not.
         yaml.set(path + ".pitch", 0.0F);
+        save(yaml);
+    }
+
+    /**
+     * Drops a board's anchor, leaving the rest of its configuration alone. The
+     * board stays defined and stops being rendered until it is placed again.
+     */
+    public void unplaceBoard(NamespacedKey id) throws ConfigException {
+        YamlConfiguration yaml = loadYaml(boardsFile);
+        yaml.set("boards." + configKeyOf(yaml, id) + ".anchor", null);
+        save(yaml);
+    }
+
+    /** Deletes a board outright, anchor and all. */
+    public void removeBoard(NamespacedKey id) throws ConfigException {
+        YamlConfiguration yaml = loadYaml(boardsFile);
+        yaml.set("boards." + configKeyOf(yaml, id), null);
+        save(yaml);
+    }
+
+    /**
+     * The key {@code id} is actually written under in boards.yml.
+     * <p>
+     * An id may be spelled bare ({@code welcome}) or namespaced
+     * ({@code holopanels:welcome}) and both load to the same key, so matching
+     * on the parsed id rather than on the text is what lets either spelling be
+     * edited from in game.
+     */
+    private String configKeyOf(YamlConfiguration yaml, NamespacedKey id) throws ConfigException {
+        ConfigurationSection root = yaml.getConfigurationSection("boards");
+        if (root != null) {
+            for (String rawId : root.getKeys(false)) {
+                if (id.equals(NamespacedKey.fromString(rawId.toLowerCase(Locale.ROOT), plugin))) {
+                    return rawId;
+                }
+            }
+        }
+        throw new ConfigException("No configured board exists with id " + id);
+    }
+
+    private void save(YamlConfiguration yaml) throws ConfigException {
         try {
             yaml.save(boardsFile);
         } catch (IOException exception) {
@@ -232,6 +272,7 @@ public final class HoloConfigService {
                 lines,
                 section.getString("row", "<entry:label>"),
                 section.getString("selected-row", "<white>> </white><entry:label>"),
+                section.getString("heading-row", "<entry:label>"),
                 section.getString("empty", "<gray>No entries."),
                 positive(section.getInt("page-size", 16), path + ".page-size"),
                 buttons,
@@ -404,10 +445,6 @@ public final class HoloConfigService {
             throw new ConfigException(path + " is not a valid namespaced id: " + input);
         }
         return key;
-    }
-
-    private String keyForConfig(NamespacedKey key) {
-        return key.getNamespace().equals(plugin.getName().toLowerCase(Locale.ROOT)) ? key.getKey() : key.toString();
     }
 
     private YamlConfiguration loadYaml(File file) throws ConfigException {

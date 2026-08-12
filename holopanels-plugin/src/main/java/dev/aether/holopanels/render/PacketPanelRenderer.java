@@ -29,8 +29,12 @@ public final class PacketPanelRenderer {
     private record VisiblePanel(int entityId, RenderedPanel panel) {
     }
 
-    private final TextDisplayMetadataSchema schema = TextDisplayMetadataSchema.current();
+    private final TextDisplayMetadataSchema schema;
     private final Map<UUID, Map<String, VisiblePanel>> visible = new ConcurrentHashMap<>();
+
+    public PacketPanelRenderer(TextDisplayMetadataSchema schema) {
+        this.schema = schema;
+    }
 
     public void apply(Player player, List<RenderedPanel> panels) {
         Map<String, VisiblePanel> current = visible.computeIfAbsent(player.getUniqueId(), ignored -> new LinkedHashMap<>());

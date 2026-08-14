@@ -37,7 +37,6 @@ public final class PanelGeometry {
         return Optional.of(normalizeYaw((float) Math.toDegrees(Math.atan2(-x, z))));
     }
 
-    /** Folded into (-180, 180], which is the range Minecraft itself stores. */
     public static float normalizeYaw(float yaw) {
         float wrapped = yaw % 360.0F;
         if (wrapped <= -180.0F) {

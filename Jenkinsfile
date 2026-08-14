@@ -7,6 +7,7 @@
 // kyori is asserted, not assumed.
 mavenPlugin(
     artifacts: 'holopanels-plugin/target/HoloPanels-*.jar,holopanels-api/target/holopanels-api-*.jar',
+    downloads: 'holopanels-plugin/target/HoloPanels-*.jar',
     verify: [
         jar:       'holopanels-plugin/target/HoloPanels-*.jar',
         relocated: ['dev/bwmp/holopanels/libs/keystone/'],

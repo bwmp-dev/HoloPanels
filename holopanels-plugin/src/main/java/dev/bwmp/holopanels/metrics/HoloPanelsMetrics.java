@@ -66,7 +66,6 @@ public final class HoloPanelsMetrics {
                 : "Modern";
     }
 
-    /** The plugins built on HoloPanels, which is what decides whether the API is worth keeping. */
     private static Map<String, Integer> addons(HoloPanelsPlugin plugin) {
         String name = plugin.getName();
         Map<String, Integer> found = new LinkedHashMap<>();

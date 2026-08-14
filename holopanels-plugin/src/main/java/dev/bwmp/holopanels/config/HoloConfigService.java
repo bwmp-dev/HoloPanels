@@ -80,17 +80,12 @@ public final class HoloConfigService {
         save(yaml);
     }
 
-    /**
-     * Drops a board's anchor, leaving the rest of its configuration alone. The
-     * board stays defined and stops being rendered until it is placed again.
-     */
     public void unplaceBoard(NamespacedKey id) throws ConfigException {
         YamlConfiguration yaml = loadYaml(boardsFile);
         yaml.set("boards." + configKeyOf(yaml, id) + ".anchor", null);
         save(yaml);
     }
 
-    /** Deletes a board outright, anchor and all. */
     public void removeBoard(NamespacedKey id) throws ConfigException {
         YamlConfiguration yaml = loadYaml(boardsFile);
         yaml.set("boards." + configKeyOf(yaml, id), null);

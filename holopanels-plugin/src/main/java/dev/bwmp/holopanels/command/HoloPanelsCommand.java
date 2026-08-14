@@ -41,7 +41,6 @@ public final class HoloPanelsCommand {
     /** How far {@code wall} will look for a block to place against. */
     private static final double WALL_REACH = 12.0;
 
-    /** Clearance left between the wall and the board, so the two do not z-fight. */
     private static final double DEFAULT_WALL_GAP = 0.05;
 
     private static final double DEFAULT_NUDGE = 0.1;
@@ -464,7 +463,6 @@ public final class HoloPanelsCommand {
         return true;
     }
 
-    /** A coordinate argument, where {@code ~} and {@code ~n} are relative to {@code origin}. */
     private OptionalDouble coordinate(String raw, double origin) {
         if (!raw.startsWith("~")) {
             return number(raw);

@@ -114,6 +114,23 @@ Ids must be in your own plugin's namespace, and everything you register is dropp
 
 ---
 
+## Metrics
+
+HoloPanels reports to [bStats](https://bstats.org/plugin/bukkit/HoloPanels/33368) and to a self-hosted endpoint at `plugins.metrics.bwmp.dev`, every 30 minutes: server software and Minecraft version, Java version, OS and core count, player count, and how much HoloPanels is doing — board, view and panel counts, open viewer sessions, registered extensions, which text display metadata layout the server needs, whether PlaceholderAPI is present, and which plugins depend on HoloPanels.
+
+No addresses, no player names, no player UUIDs, no world data. The server is identified by a random UUID generated on first run and nothing else.
+
+One switch turns off both, and covers every Keystone plugin on the server:
+
+```yaml
+# plugins/Keystone/telemetry.yml
+enabled: false
+```
+
+Turning off bStats in `plugins/bStats/config.yml` also turns off the self-hosted half — one refusal covers both.
+
+---
+
 ## Building
 
 HoloPanels shades [Keystone](https://github.com/bwmp-dev/Keystone). Keystone is published, so `mvn install` is all you need:
@@ -152,6 +169,8 @@ HoloPanels is the **Paper-family** Keystone build: it excludes Keystone's shaded
 It is also what draws the line at Spigot rather than at Purpur, Pufferfish or Folia, all of which ship Paper's Adventure and need nothing further.
 
 CI asserts the jar contains no `kyori` classes for exactly this reason.
+
+Dropping Adventure means `<relocations combine.self="override">`, which replaces the parent's list wholesale — so the `org.bstats.` entry has to be written back in by hand. Without it bStats finds itself unrelocated, throws from its own constructor, and the metrics sink logs a banner at every boot and sends nothing.
 
 ---
 

@@ -88,6 +88,22 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.bwmp</groupId>
+            <artifactId>keystone-metrics</artifactId>
+            <!--
+                The same Adventure exclusion as keystone-core, and for the same
+                reason: this pulls keystone-core transitively, and an exclusion
+                on one path does not apply to the other.
+            -->
+            <exclusions>
+                <exclusion>
+                    <groupId>net.kyori</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>${paper.version}</version>
@@ -149,6 +165,20 @@
                                 <relocation>
                                     <pattern>dev.bwmp.keystone.</pattern>
                                     <shadedPattern>${keystone.libs.package}.keystone.</shadedPattern>
+                                </relocation>
+                                <!--
+                                    Copied back from the parent, which this
+                                    override replaces wholesale. Dropping the
+                                    net.kyori entry is the point of the
+                                    override; dropping this one is the trap.
+                                    bStats throws from its own constructor when
+                                    it finds itself unrelocated, so without this
+                                    BStatsSink logs a banner at every boot and
+                                    sends nothing.
+                                -->
+                                <relocation>
+                                    <pattern>org.bstats.</pattern>
+                                    <shadedPattern>${keystone.libs.package}.bstats.</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

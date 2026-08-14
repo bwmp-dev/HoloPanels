@@ -4,6 +4,7 @@ import dev.aether.holopanels.api.HoloPanels;
 import dev.aether.holopanels.command.HoloPanelsCommand;
 import dev.aether.holopanels.config.ConfigException;
 import dev.aether.holopanels.config.HoloConfigService;
+import dev.aether.holopanels.metrics.HoloPanelsMetrics;
 import dev.aether.holopanels.model.ConfigSnapshot;
 import dev.aether.holopanels.render.LayoutService;
 import dev.aether.holopanels.render.PacketPanelRenderer;
@@ -117,6 +118,11 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
         }
         getLogger().info("HoloPanels enabled with " + snapshot.get().boards().size() + " board(s) and "
                 + snapshot.get().views().size() + " view(s).");
+
+        // Last, so every sampler it registers has something to read — and past
+        // the invalid-configuration return above, which disables the plugin.
+        // Shutdown is wired to the Keystone handle, so there is nothing to undo.
+        HoloPanelsMetrics.start(this);
     }
 
     @Override
@@ -198,6 +204,18 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
 
     public KeystoneScheduler scheduler() {
         return scheduler;
+    }
+
+    public KeystoneHandle keystone() {
+        return keystone;
+    }
+
+    public SessionManager sessions() {
+        return sessions;
+    }
+
+    public ExtensionRegistry extensions() {
+        return extensions;
     }
 
     public ManagedConfig managedConfig(String resource) {

@@ -39,4 +39,9 @@ public final class SessionManager {
     public void clear() {
         sessions.clear();
     }
+
+    /** Open viewer sessions: one per player per board they have looked at. */
+    public int size() {
+        return sessions.size();
+    }
 }

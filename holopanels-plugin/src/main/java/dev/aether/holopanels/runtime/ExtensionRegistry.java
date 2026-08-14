@@ -80,6 +80,11 @@ public final class ExtensionRegistry {
         return actions.get(id);
     }
 
+    /** Everything third parties have registered, across all four kinds. */
+    public int size() {
+        return entryProviders.size() + contentProviders.size() + conditions.size() + actions.size();
+    }
+
     public void unregister(Plugin owner) {
         entryProviders.unregisterAll(owner);
         contentProviders.unregisterAll(owner);

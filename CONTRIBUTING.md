@@ -21,7 +21,7 @@ Config formats count too. Renaming a key in `boards.yml` or a view file breaks e
 
 ## Adventure must not be bundled
 
-HoloPanels is the **Paper-only** Keystone build. It excludes Keystone's shaded Adventure and uses the server's own, because the renderer hands components straight to Paper's display APIs and `holopanels-api` publishes `Component` on its own surface. Bundling Adventure would relocate both into `dev.aether.holopanels.libs.kyori`, where neither lines up with the server — and every provider plugin would fail at runtime against a class name that looks entirely correct.
+HoloPanels is the **Paper-only** Keystone build. It excludes Keystone's shaded Adventure and uses the server's own, because the renderer hands components straight to Paper's display APIs and `holopanels-api` publishes `Component` on its own surface. Bundling Adventure would relocate both into `dev.bwmp.holopanels.libs.kyori`, where neither lines up with the server — and every provider plugin would fail at runtime against a class name that looks entirely correct.
 
 CI fails the build if any `kyori` class ends up in the jar. If that check trips, the exclusion in `holopanels-plugin/pom.xml` has regressed; do not delete the check.
 

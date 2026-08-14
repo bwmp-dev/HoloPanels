@@ -32,7 +32,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>dev.aether</groupId>
+    <groupId>dev.bwmp</groupId>
     <artifactId>holopanels-plugin</artifactId>
     <version>1.0.0</version> <!-- x-release-please-version -->
     <packaging>jar</packaging>
@@ -40,7 +40,7 @@
     <name>HoloPanels Plugin</name>
 
     <properties>
-        <keystone.libs.package>dev.aether.holopanels.libs</keystone.libs.package>
+        <keystone.libs.package>dev.bwmp.holopanels.libs</keystone.libs.package>
         <paper.version>1.19.4-R0.1-SNAPSHOT</paper.version>
         <packetevents.version>2.13.0</packetevents.version>
         <placeholderapi.version>2.12.2</placeholderapi.version>
@@ -60,7 +60,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.aether</groupId>
+            <groupId>dev.bwmp</groupId>
             <artifactId>holopanels-api</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -71,7 +71,7 @@
             HoloPanels is Paper-only and hands Components straight to Paper's
             display and packet APIs, and holopanels-api publishes Component on
             its own surface for third-party providers. Taking Keystone's shaded
-            copy would relocate all of that into dev.aether.holopanels.libs.kyori
+            copy would relocate all of that into dev.bwmp.holopanels.libs.kyori
             and none of it would line up with the server's own Adventure - so
             the server's is used instead, and Keystone detects that at runtime
             and sends natively rather than through BukkitAudiences.

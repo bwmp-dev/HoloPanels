@@ -164,7 +164,7 @@ git clone https://github.com/bwmp-dev/Keystone && cd Keystone && mvn install
 
 ### A note on Adventure
 
-HoloPanels is the **Paper-family** Keystone build: it excludes Keystone's shaded Adventure and uses the server's own. That is not incidental. The renderer hands components straight to Paper's display APIs, and `holopanels-api` exposes `Component` on its own surface — relocating Adventure would move both into `dev.aether.holopanels.libs.kyori`, where neither lines up with the server, and every third-party provider would fail at runtime against a class name that looks correct.
+HoloPanels is the **Paper-family** Keystone build: it excludes Keystone's shaded Adventure and uses the server's own. That is not incidental. The renderer hands components straight to Paper's display APIs, and `holopanels-api` exposes `Component` on its own surface — relocating Adventure would move both into `dev.bwmp.holopanels.libs.kyori`, where neither lines up with the server, and every third-party provider would fail at runtime against a class name that looks correct.
 
 It is also what draws the line at Spigot rather than at Purpur, Pufferfish or Folia, all of which ship Paper's Adventure and need nothing further.
 

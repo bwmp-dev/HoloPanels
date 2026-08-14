@@ -9,7 +9,7 @@ mavenPlugin(
     artifacts: 'holopanels-plugin/target/HoloPanels-*.jar,holopanels-api/target/holopanels-api-*.jar',
     verify: [
         jar:       'holopanels-plugin/target/HoloPanels-*.jar',
-        relocated: ['dev/aether/holopanels/libs/keystone/'],
+        relocated: ['dev/bwmp/holopanels/libs/keystone/'],
         absent:    ['net/kyori/', 'dev/bwmp/keystone/']
     ]
 )

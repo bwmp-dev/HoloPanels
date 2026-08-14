@@ -1,8 +1,8 @@
 name: HoloPanels
 version: ${project.version}
-main: dev.aether.holopanels.HoloPanelsPlugin
+main: dev.bwmp.holopanels.HoloPanelsPlugin
 api-version: '1.19'
-author: Aether
+authors: [ bwmp ]
 description: Interactive in-world panels.
 depend: [packetevents]
 softdepend: [PlaceholderAPI]

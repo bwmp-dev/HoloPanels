@@ -1,8 +1,9 @@
 # A greeting board for spawn.
 #
-# Shows: a plain text panel with PlaceholderAPI, a buttons panel, and the
-# "dismiss" pattern — `close` hides the board for that player until they
-# switch views or their session ends, so it suits a one-time notice.
+# Shows: a plain text panel with PlaceholderAPI, a buttons panel, a whole panel
+# used as one hoverable button, and the "dismiss" pattern — `close` hides the
+# board for that player until they switch views or their session ends, so it
+# suits a one-time notice.
 
 id: holopanels:welcome
 
@@ -54,3 +55,29 @@ panels:
             - type: close
             - type: action-bar
               message: '<gray>Hidden until you rejoin. <dark_gray>(/holopanels refresh brings boards back)'
+
+  # One panel acting as a single button. A `text` panel takes clicks across its
+  # whole body, and `hover-background-color` lights it up while the crosshair is
+  # on it, so nothing else is needed to make a slab of text behave like a
+  # button. The highlight covers `interaction-width`, not the width of the text,
+  # so that is the number to tune until the lit area matches what is drawn.
+  spawn:
+    type: text
+    offset: { right: 0.0, up: -1.45, forward: 0.0 }
+    style:
+      line-width: 260
+      interaction-width: 2.4
+      background-color: '#16233a'
+      background-opacity: 0.85
+      hover-background-color: '#27476f'
+      alignment: center
+    lines:
+      - ''
+      - '<white><bold>TAKE ME TO SPAWN</bold>'
+      - ''
+    clicks:
+      left:
+        - type: command
+          command: 'spawn'
+          cooldown-ticks: 60
+          cooldown-message: '<red>Wait a moment before using that again.'

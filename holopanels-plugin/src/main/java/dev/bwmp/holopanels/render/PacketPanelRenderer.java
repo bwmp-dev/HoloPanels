@@ -5,6 +5,7 @@ import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.util.Vector3d;
+import com.github.retrooper.packetevents.util.Vector3f;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
@@ -17,20 +18,23 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 public final class PacketPanelRenderer {
     private static final AtomicInteger ENTITY_IDS = new AtomicInteger(1_850_000_000);
 
-    private record VisiblePanel(int entityId, RenderedPanel panel) {
+    private record VisiblePanel(int[] entityIds, RenderedPanel panel) {
     }
 
     private final TextDisplayMetadataSchema schema;
     private final Map<UUID, Map<String, VisiblePanel>> visible = new ConcurrentHashMap<>();
+    private final Map<UUID, String> hovered = new ConcurrentHashMap<>();
 
     public PacketPanelRenderer(TextDisplayMetadataSchema schema) {
         this.schema = schema;
@@ -45,34 +49,92 @@ public final class PacketPanelRenderer {
 
         List<String> removed = current.keySet().stream().filter(id -> !desired.containsKey(id)).toList();
         for (String id : removed) {
-            VisiblePanel panel = current.remove(id);
-            sendDestroy(player, panel.entityId());
+            destroy(player, current.remove(id));
         }
 
         for (Map.Entry<String, RenderedPanel> entry : desired.entrySet()) {
             VisiblePanel existing = current.get(entry.getKey());
             RenderedPanel panel = entry.getValue();
-            if (existing == null) {
-                int entityId = ENTITY_IDS.incrementAndGet();
-                sendSpawn(player, entityId, panel.location());
-                sendMetadata(player, entityId, panel);
-                current.put(entry.getKey(), new VisiblePanel(entityId, panel));
-                continue;
-            }
-            if (!sameLocation(existing.panel().location(), panel.location())) {
-                sendDestroy(player, existing.entityId());
-                int entityId = ENTITY_IDS.incrementAndGet();
-                sendSpawn(player, entityId, panel.location());
-                sendMetadata(player, entityId, panel);
-                current.put(entry.getKey(), new VisiblePanel(entityId, panel));
-            } else if (!sameMetadata(existing.panel(), panel)) {
-                sendMetadata(player, existing.entityId(), panel);
-                current.put(entry.getKey(), new VisiblePanel(existing.entityId(), panel));
+            if (existing == null || !samePlacement(existing.panel(), panel)) {
+                if (existing != null) {
+                    destroy(player, existing);
+                }
+                current.put(entry.getKey(), spawn(player, panel));
+            } else if (!existing.panel().equals(panel)) {
+                sendMetadata(player, existing.entityIds(), panel);
+                current.put(entry.getKey(), new VisiblePanel(existing.entityIds(), panel));
             }
         }
 
         if (current.isEmpty()) {
             visible.remove(player.getUniqueId());
+        }
+        forgetHoverIfGone(player.getUniqueId(), current);
+    }
+
+    private VisiblePanel spawn(Player player, RenderedPanel panel) {
+        int[] entityIds = new int[panel.layers().size()];
+        for (int index = 0; index < entityIds.length; index++) {
+            entityIds[index] = ENTITY_IDS.incrementAndGet();
+            sendSpawn(player, entityIds[index], panel.layers().get(index).location());
+        }
+        sendMetadata(player, entityIds, panel);
+        return new VisiblePanel(entityIds, panel);
+    }
+
+    private void destroy(Player player, VisiblePanel panel) {
+        PacketEvents.getAPI().getPlayerManager().sendPacket(player,
+                new WrapperPlayServerDestroyEntities(panel.entityIds()));
+    }
+
+    /**
+     * Whether the entities already sent still stand where this panel wants
+     * them. A panel that has grown a layer, or moved one, is respawned rather
+     * than patched: metadata can neither move an entity nor conjure one.
+     */
+    private boolean samePlacement(RenderedPanel left, RenderedPanel right) {
+        if (left.layers().size() != right.layers().size()) {
+            return false;
+        }
+        for (int index = 0; index < left.layers().size(); index++) {
+            if (!sameLocation(left.layers().get(index).location(), right.layers().get(index).location())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Marks {@code renderId} as the panel the player is aiming at, or nothing
+     * when {@code renderId} is null, redrawing only the panels whose background
+     * that changes. Called far more often than {@link #apply}, so it does no
+     * layout work of its own.
+     */
+    public void hover(Player player, String renderId) {
+        UUID uuid = player.getUniqueId();
+        String previous = renderId == null ? hovered.remove(uuid) : hovered.put(uuid, renderId);
+        if (Objects.equals(previous, renderId)) {
+            return;
+        }
+        Map<String, VisiblePanel> panels = visible.get(uuid);
+        if (panels == null) {
+            return;
+        }
+        resendBackground(player, panels, previous);
+        resendBackground(player, panels, renderId);
+    }
+
+    private void resendBackground(Player player, Map<String, VisiblePanel> panels, String renderId) {
+        VisiblePanel panel = renderId == null ? null : panels.get(renderId);
+        if (panel != null) {
+            sendMetadata(player, panel.entityIds(), panel.panel());
+        }
+    }
+
+    private void forgetHoverIfGone(UUID uuid, Map<String, VisiblePanel> panels) {
+        String renderId = hovered.get(uuid);
+        if (renderId != null && !panels.containsKey(renderId)) {
+            hovered.remove(uuid);
         }
     }
 
@@ -91,19 +153,23 @@ public final class PacketPanelRenderer {
                 .map(Map.Entry::getKey)
                 .toList();
         for (String id : ids) {
-            sendDestroy(player, panels.remove(id).entityId());
+            destroy(player, panels.remove(id));
         }
         if (panels.isEmpty()) {
             visible.remove(player.getUniqueId());
         }
+        forgetHoverIfGone(player.getUniqueId(), panels);
     }
 
     public void hideAll(Player player) {
         Map<String, VisiblePanel> panels = visible.remove(player.getUniqueId());
+        hovered.remove(player.getUniqueId());
         if (panels == null || panels.isEmpty()) {
             return;
         }
-        int[] ids = panels.values().stream().mapToInt(VisiblePanel::entityId).toArray();
+        int[] ids = panels.values().stream()
+                .flatMapToInt(panel -> IntStream.of(panel.entityIds()))
+                .toArray();
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, new WrapperPlayServerDestroyEntities(ids));
     }
 
@@ -127,22 +193,34 @@ public final class PacketPanelRenderer {
         ));
     }
 
-    private void sendMetadata(Player player, int entityId, RenderedPanel panel) {
+    private void sendMetadata(Player player, int[] entityIds, RenderedPanel panel) {
         PanelStyle style = panel.style();
-        List<EntityData<?>> metadata = new ArrayList<>();
-        metadata.add(new EntityData<>(schema.billboard(), EntityDataTypes.BYTE, billboard(style.billboard())));
-        metadata.add(new EntityData<>(schema.text(), EntityDataTypes.ADV_COMPONENT, panel.text()));
-        metadata.add(new EntityData<>(schema.lineWidth(), EntityDataTypes.INT, style.lineWidth()));
-        metadata.add(new EntityData<>(schema.backgroundColor(), EntityDataTypes.INT, style.backgroundColor()));
-        metadata.add(new EntityData<>(schema.textOpacity(), EntityDataTypes.BYTE, (byte) style.textOpacity()));
-        metadata.add(new EntityData<>(schema.flags(), EntityDataTypes.BYTE, flags(style)));
-        PacketEvents.getAPI().getPlayerManager().sendPacket(player,
-                new WrapperPlayServerEntityMetadata(entityId, metadata));
+        for (int index = 0; index < entityIds.length; index++) {
+            PanelLayer layer = panel.layers().get(index);
+            float scale = (float) layer.scale();
+            List<EntityData<?>> metadata = new ArrayList<>();
+            metadata.add(new EntityData<>(schema.scale(), EntityDataTypes.VECTOR3F, new Vector3f(scale, scale, scale)));
+            metadata.add(new EntityData<>(schema.billboard(), EntityDataTypes.BYTE, billboard(style.billboard())));
+            metadata.add(new EntityData<>(schema.text(), EntityDataTypes.ADV_COMPONENT, layer.text()));
+            metadata.add(new EntityData<>(schema.lineWidth(), EntityDataTypes.INT, layer.lineWidth()));
+            metadata.add(new EntityData<>(schema.backgroundColor(), EntityDataTypes.INT, background(player, panel, layer)));
+            metadata.add(new EntityData<>(schema.textOpacity(), EntityDataTypes.BYTE, (byte) style.textOpacity()));
+            metadata.add(new EntityData<>(schema.flags(), EntityDataTypes.BYTE, flags(style)));
+            PacketEvents.getAPI().getPlayerManager().sendPacket(player,
+                    new WrapperPlayServerEntityMetadata(entityIds[index], metadata));
+        }
     }
 
-    private void sendDestroy(Player player, int entityId) {
-        PacketEvents.getAPI().getPlayerManager().sendPacket(player,
-                new WrapperPlayServerDestroyEntities(entityId));
+    /** Transparent for the layers drawing text in front of a backdrop that has the background already. */
+    private int background(Player player, RenderedPanel panel, PanelLayer layer) {
+        PanelStyle style = panel.style();
+        if (!layer.carriesBackground()) {
+            return 0;
+        }
+        if (style.hoverBackgroundColor().isEmpty() || !panel.renderId().equals(hovered.get(player.getUniqueId()))) {
+            return style.backgroundColor();
+        }
+        return style.hoverBackgroundColor().getAsInt();
     }
 
     private byte billboard(String value) {
@@ -179,10 +257,4 @@ public final class PacketPanelRenderer {
                 && left.getPitch() == right.getPitch();
     }
 
-    private boolean sameMetadata(RenderedPanel left, RenderedPanel right) {
-        return left.text().equals(right.text())
-                && left.lineCount() == right.lineCount()
-                && left.style().equals(right.style())
-                && left.clickRegions().equals(right.clickRegions());
-    }
 }

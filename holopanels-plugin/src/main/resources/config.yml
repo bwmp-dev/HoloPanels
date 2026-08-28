@@ -1,4 +1,5 @@
 visibility-check-ticks: 10
+hover-check-ticks: 2
 placeholder-refresh-ticks: 20
 movement-threshold: 0.5
 default-visibility-distance: 24.0
@@ -12,11 +13,26 @@ limits:
 
 style:
   line-height: 0.25
+  # Multiplies the rendered size of a panel. Click regions follow it, so a
+  # scaled panel still takes clicks where it is drawn. A single line can
+  # override it, which is how one panel holds a headline and a caption:
+  #   lines:
+  #     - { text: '<bold>HEADLINE', scale: 2.4 }
+  #     - 'and the small print'
+  scale: 1.0
+  # A panel can also declare its box in blocks, under its own style rather than
+  # here, and then it draws that background and takes clicks over all of it
+  # however little text is in it:
+  #   size: { width: 5.0, height: 6.0 }
   click-offset-y: 0.0
   interaction-width: 4.0
   line-width: 200
   background-color: '#0b1420'
   background-opacity: 0.65
+  # Uncomment to give every panel a hover colour; per panel, set either key
+  # under its own style instead.
+  # hover-background-color: '#1b2b40'
+  # hover-background-opacity: 0.85
   text-opacity: 255
   alignment: left
   billboard: fixed

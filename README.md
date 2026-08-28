@@ -57,6 +57,8 @@ views/*.yml    what it shows: panels, lines, buttons, click actions
 
 A **view** contains **panels** — `list`, `text` or `buttons` — each with its own offset, style and visibility condition. Lines are MiniMessage and support PlaceholderAPI.
 
+A `text` panel with a `clicks` block is clickable across its whole body, so giving its style a `hover-background-color` turns one panel into one big button that lights up under the crosshair.
+
 Content can be static, or supplied by another plugin through a **provider**. That is what makes a leaderboard, a shop or a queue display possible without HoloPanels knowing what any of those are.
 
 ---

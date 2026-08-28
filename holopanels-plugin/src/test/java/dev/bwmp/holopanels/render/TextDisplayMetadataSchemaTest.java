@@ -13,6 +13,7 @@ class TextDisplayMetadataSchemaTest {
         TextDisplayMetadataSchema schema = TextDisplayMetadataSchema.forVersion(McVersion.parse("1.19.4-R0.1-SNAPSHOT"));
 
         assertTrue(schema.isLegacy());
+        assertEquals(11, schema.scale());
         assertEquals(14, schema.billboard());
         assertEquals(22, schema.text());
         assertEquals(26, schema.flags());
@@ -28,6 +29,7 @@ class TextDisplayMetadataSchemaTest {
         TextDisplayMetadataSchema schema = TextDisplayMetadataSchema.forVersion(McVersion.parse("1.20.2"));
 
         assertFalse(schema.isLegacy());
+        assertEquals(12, schema.scale());
         assertEquals(15, schema.billboard());
         assertEquals(23, schema.text());
         assertEquals(27, schema.flags());

@@ -8,7 +8,9 @@ import dev.bwmp.holopanels.model.ButtonDefinition;
 import dev.bwmp.holopanels.model.ConditionDefinition;
 import dev.bwmp.holopanels.model.ConfigSnapshot;
 import dev.bwmp.holopanels.model.PanelDefinition;
+import dev.bwmp.holopanels.model.PanelLine;
 import dev.bwmp.holopanels.model.PanelOffset;
+import dev.bwmp.holopanels.model.PanelSize;
 import dev.bwmp.holopanels.model.PanelStyle;
 import dev.bwmp.holopanels.model.PanelType;
 import dev.bwmp.holopanels.model.PluginSettings;
@@ -31,6 +33,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
 
 public final class HoloConfigService {
     private final JavaPlugin plugin;
@@ -124,6 +128,7 @@ public final class HoloConfigService {
         PanelStyle style = style(root.getConfigurationSection("style"), null);
         return new PluginSettings(
                 positive(root.getInt("visibility-check-ticks", 10), "visibility-check-ticks"),
+                positive(root.getInt("hover-check-ticks", 2), "hover-check-ticks"),
                 positive(root.getInt("placeholder-refresh-ticks", 20), "placeholder-refresh-ticks"),
                 positive(root.getDouble("movement-threshold", 0.5), "movement-threshold"),
                 positive(root.getDouble("default-visibility-distance", 24.0), "default-visibility-distance"),
@@ -233,7 +238,7 @@ public final class HoloConfigService {
         Optional<String> selection = Optional.ofNullable(section.getString("selection")).filter(value -> !value.isBlank());
         List<StaticEntryDefinition> entries = entries(section.getConfigurationSection("entries"), path);
         List<String> header = section.getStringList("header");
-        List<String> lines = section.getStringList("lines");
+        List<PanelLine> lines = lines(section.getList("lines"), path);
         List<ButtonDefinition> buttons = buttons(section.getMapList("buttons"), path);
         Map<ClickType, List<ActionDefinition>> clicks = clicks(section.getConfigurationSection("clicks"), path);
 
@@ -273,6 +278,44 @@ public final class HoloConfigService {
                 buttons,
                 clicks
         );
+    }
+
+    /**
+     * A line is either the text itself, or a map that also gives it a scale.
+     * The second form is what puts a headline and its caption in one panel: a
+     * text display draws all of its text at one size, so a line that asks for
+     * another gets a display of its own.
+     */
+    private List<PanelLine> lines(List<?> raw, String path) throws ConfigException {
+        if (raw == null) {
+            return List.of();
+        }
+        List<PanelLine> lines = new ArrayList<>();
+        for (int index = 0; index < raw.size(); index++) {
+            Object item = raw.get(index);
+            if (!(item instanceof Map<?, ?>) && !(item instanceof ConfigurationSection)) {
+                lines.add(PanelLine.of(string(item)));
+                continue;
+            }
+            Map<?, ?> value = map(item);
+            String itemPath = path + ".lines[" + index + "]";
+            OptionalDouble scale = value.containsKey("scale")
+                    ? OptionalDouble.of(positive(number(value.get("scale"), itemPath + ".scale"), itemPath + ".scale"))
+                    : OptionalDouble.empty();
+            lines.add(new PanelLine(string(value.get("text")), scale));
+        }
+        return lines;
+    }
+
+    private static double number(Object value, String path) throws ConfigException {
+        if (value instanceof Number found) {
+            return found.doubleValue();
+        }
+        try {
+            return Double.parseDouble(string(value));
+        } catch (NumberFormatException exception) {
+            throw new ConfigException(path + " must be a number", exception);
+        }
     }
 
     private List<StaticEntryDefinition> entries(ConfigurationSection section, String path) {
@@ -408,30 +451,48 @@ public final class HoloConfigService {
 
     private PanelStyle style(ConfigurationSection section, PanelStyle fallback) throws ConfigException {
         PanelStyle base = fallback == null
-                ? new PanelStyle(0.25, 0.0, 4.0, 200, 0xA60B1420, 255, "left", "fixed", false, false)
+                ? new PanelStyle(0.25, 1.0, Optional.empty(), 0.0, 4.0, 200, 0xA60B1420, OptionalInt.empty(),
+                        255, "left", "fixed", false, false)
                 : fallback;
         if (section == null) {
             return base;
         }
 
-        double opacity = section.getDouble("background-opacity", ((base.backgroundColor() >>> 24) & 0xFF) / 255.0);
-        if (opacity < 0.0 || opacity > 1.0) {
-            throw new ConfigException("background-opacity must be between 0 and 1");
-        }
-        int rgb = parseRgb(section.getString("background-color", String.format("#%06x", base.backgroundColor() & 0xFFFFFF)));
-        int argb = ((int) Math.round(opacity * 255.0) << 24) | rgb;
+        ConfigurationSection sizeSection = section.getConfigurationSection("size");
+        Optional<PanelSize> size = sizeSection == null ? base.size() : Optional.of(new PanelSize(
+                positive(sizeSection.getDouble("width"), "style.size.width"),
+                positive(sizeSection.getDouble("height"), "style.size.height")));
+        int argb = argb(section, "background-color", "background-opacity", base.backgroundColor());
+        // Either hover key on its own is enough to opt in; the one left out
+        // falls back to this panel's own background rather than the inherited
+        // hover colour, so a panel that recolours its background does not hover
+        // to something unrelated.
+        OptionalInt hover = section.isSet("hover-background-color") || section.isSet("hover-background-opacity")
+                ? OptionalInt.of(argb(section, "hover-background-color", "hover-background-opacity", argb))
+                : base.hoverBackgroundColor();
         return new PanelStyle(
                 positive(section.getDouble("line-height", base.lineHeight()), "style.line-height"),
+                positive(section.getDouble("scale", base.scale()), "style.scale"),
+                size,
                 section.getDouble("click-offset-y", base.clickOffsetY()),
                 positive(section.getDouble("interaction-width", base.interactionWidth()), "style.interaction-width"),
                 positive(section.getInt("line-width", base.lineWidth()), "style.line-width"),
                 argb,
+                hover,
                 Math.max(0, Math.min(255, section.getInt("text-opacity", base.textOpacity()))),
                 section.getString("alignment", base.alignment()),
                 section.getString("billboard", base.billboard()),
                 section.getBoolean("text-shadow", base.textShadow()),
                 section.getBoolean("see-through", base.seeThrough())
         );
+    }
+
+    private static int argb(ConfigurationSection section, String colorKey, String opacityKey, int base) throws ConfigException {
+        double opacity = section.getDouble(opacityKey, ((base >>> 24) & 0xFF) / 255.0);
+        if (opacity < 0.0 || opacity > 1.0) {
+            throw new ConfigException(opacityKey + " must be between 0 and 1");
+        }
+        return ((int) Math.round(opacity * 255.0) << 24) | parseRgb(section.getString(colorKey, String.format("#%06x", base & 0xFFFFFF)));
     }
 
     private NamespacedKey key(String input, String path) throws ConfigException {

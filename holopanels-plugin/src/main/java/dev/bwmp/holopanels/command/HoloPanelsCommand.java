@@ -406,7 +406,7 @@ public final class HoloPanelsCommand {
         for (RenderedPanel panel : panels) {
             line(context.sender(), "<dark_gray>-</dark_gray> <white>"
                     + KeystoneText.escape(panel.renderId()) + "</white> <gray>lines "
-                    + panel.lineCount() + ", regions " + panel.clickRegions().size() + "</gray>");
+                    + panel.bands().size() + ", regions " + panel.clickRegions().size() + "</gray>");
         }
     }
 

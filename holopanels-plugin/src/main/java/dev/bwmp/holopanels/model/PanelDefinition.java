@@ -18,7 +18,7 @@ public record PanelDefinition(
         Optional<String> selectionPanel,
         List<StaticEntryDefinition> staticEntries,
         List<String> header,
-        List<String> lines,
+        List<PanelLine> lines,
         String rowTemplate,
         String selectedRowTemplate,
         String headingRowTemplate,

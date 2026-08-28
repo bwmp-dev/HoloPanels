@@ -14,6 +14,7 @@ import dev.bwmp.holopanels.runtime.ConditionService;
 import dev.bwmp.holopanels.runtime.ContentService;
 import dev.bwmp.holopanels.runtime.ExtensionRegistry;
 import dev.bwmp.holopanels.runtime.HoloPanelsApiImpl;
+import dev.bwmp.holopanels.runtime.HoverService;
 import dev.bwmp.holopanels.runtime.InteractionService;
 import dev.bwmp.holopanels.runtime.SessionManager;
 import dev.bwmp.holopanels.runtime.VisibilityService;
@@ -54,6 +55,7 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
     private SessionManager sessions;
     private PacketPanelRenderer renderer;
     private VisibilityService visibility;
+    private HoverService hover;
     private HoloPanelsApiImpl api;
 
     @Override
@@ -92,6 +94,7 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
                 snapshot.get().settings().maxEntriesPerProvider(), this::refresh);
         LayoutService layout = new LayoutService(templates, conditions, content);
         visibility = new VisibilityService(this, scheduler, this::snapshot, sessions, conditions, layout, renderer);
+        hover = new HoverService(scheduler, this::snapshot, renderer);
         ActionService actions = new ActionService(
                 this, scheduler, extensions, templates, messages, sessions, visibility, this::snapshot);
         InteractionService interactions = new InteractionService(this::snapshot, sessions, renderer, actions);
@@ -109,6 +112,7 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
         new HoloPanelsCommand(this, messages).build().bind(this, "holopanels");
 
         visibility.start();
+        hover.start();
         // Named at startup rather than left to be inferred from a bug report:
         // which server this thinks it is on, and which display layout it picked
         // from that, are the first two things a rendering problem turns on.
@@ -129,6 +133,9 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
     public void onDisable() {
         if (visibility != null) {
             visibility.stop();
+        }
+        if (hover != null) {
+            hover.stop();
         }
         if (renderer != null) {
             renderer.hideAll(Bukkit.getOnlinePlayers());
@@ -152,6 +159,7 @@ public final class HoloPanelsPlugin extends JavaPlugin implements Listener {
             snapshot.set(candidate);
             messages.reload();
             visibility.start();
+            hover.start();
             visibility.refreshAll();
             return true;
         } catch (ConfigException exception) {

@@ -13,6 +13,7 @@ import dev.bwmp.keystone.compat.McVersion;
  * slot that used to be the glow colour override and the panel comes out blank.
  */
 public record TextDisplayMetadataSchema(
+        int scale,
         int billboard,
         int text,
         int lineWidth,
@@ -23,10 +24,10 @@ public record TextDisplayMetadataSchema(
     private static final McVersion INTERPOLATION_SPLIT = McVersion.of(1, 20, 2);
 
     private static final TextDisplayMetadataSchema LEGACY =
-            new TextDisplayMetadataSchema(14, 22, 23, 24, 25, 26);
+            new TextDisplayMetadataSchema(11, 14, 22, 23, 24, 25, 26);
 
     private static final TextDisplayMetadataSchema CURRENT =
-            new TextDisplayMetadataSchema(15, 23, 24, 25, 26, 27);
+            new TextDisplayMetadataSchema(12, 15, 23, 24, 25, 26, 27);
 
     /**
      * An unparseable version reads as current rather than legacy: a version

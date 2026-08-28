@@ -92,7 +92,7 @@ public final class InteractionService implements Listener {
             return Optional.empty();
         }
         return PanelGeometry.hitCentered(
-                        player.getEyeLocation(), panel.hitCenter(), panel.style().interactionWidth(),
+                        player.getEyeLocation(), panel.hitCenter(), panel.width(),
                         panel.height(), board.clickDistance())
                 .flatMap(hit -> {
                     int line = panel.lineAt(hit.vertical());

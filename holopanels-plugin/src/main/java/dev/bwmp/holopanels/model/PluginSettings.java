@@ -2,6 +2,7 @@ package dev.bwmp.holopanels.model;
 
 public record PluginSettings(
         int visibilityCheckTicks,
+        int hoverCheckTicks,
         int placeholderRefreshTicks,
         double movementThreshold,
         double defaultVisibilityDistance,

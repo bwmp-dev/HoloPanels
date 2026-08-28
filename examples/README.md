@@ -41,7 +41,7 @@ will have the fifth slide under the panel above it.
 
 | File | Panels | Worth stealing |
 |---|---|---|
-| [`welcome.yml`](views/welcome.yml) | text, buttons | Placeholders, a chat link, and dismissing a board |
+| [`welcome.yml`](views/welcome.yml) | text, buttons | Placeholders, a chat link, a panel used as one big button, and dismissing a board |
 | [`hub.yml`](views/hub.yml) | text, buttons | One board hosting several views via `open-view` |
 | [`warps.yml`](views/warps.yml) | list, text, buttons | Pagination, master–detail, entry attributes, four click types |
 | [`kits.yml`](views/kits.yml) | list, text, buttons | Click-to-confirm, per-action permissions, console commands |
@@ -133,6 +133,51 @@ right, or give the shorter one a blank leading line.
 how wide the text is; `line-width` is the text wrap point in pixels. Side by
 side panels want their `right` offsets at least `interaction-width` apart or
 their click regions overlap and the nearer one wins.
+
+## Sizing a panel, and mixing text sizes
+
+`scale` multiplies the drawn size of a panel, and a single line can carry its
+own:
+
+```yaml
+lines:
+  - ''
+  - { text: '<white><bold>KITPVP', scale: 2.4 }
+  - { text: '<white>CLICK HERE TO JOIN', scale: 1.2 }
+```
+
+A text display draws all of its text at one size, so lines that ask for
+different ones are split across several displays behind the scenes — but they
+are still one panel, stacked down from the top in the order written, with one
+`visible-if`, one click block and one hover colour. Reach for this rather than
+`line-height`, which only moves the click maths and would leave the region
+where the text is not.
+
+`size` gives a panel a box in blocks:
+
+```yaml
+style:
+  size: { width: 5.0, height: 6.0 }
+```
+
+That box is what gets drawn behind the panel — the background fills it however
+little text there is — and what the panel takes clicks and hover over, so
+`interaction-width` is not needed alongside it. It is the straightforward way
+to hang a panel on something already built: give it the size of the wall, set
+`background-opacity: 0.0` so the blocks show through, and give it a
+`hover-background-color` so the whole face lights up under the crosshair.
+
+A `text` panel's `clicks` cover its whole box, so a panel with nothing but a
+label in it is already a button. `hover-background-color` (with an optional
+`hover-background-opacity`) finishes the job: whichever panel the viewer is
+aiming at swaps to that background, and only one panel is lit at a time — the
+nearest one, judged with the same hit test a click uses. Because that hit test
+works on `interaction-width` and the panel's line count rather than on how wide
+the text turned out, a hover region that feels off is almost always an
+`interaction-width` that does not match the drawn background. Set it under the
+panel's own `style`, or under `style` in `config.yml` to give every panel the
+same hover colour. `hover-check-ticks` in `config.yml` (default `2`) is how
+often the aim is re-checked.
 
 Panels with `background-opacity: 0.0` still occupy space and still take
 clicks. That is what the button strips here use so they read as floating text

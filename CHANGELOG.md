@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.0.0](https://github.com/bwmp-dev/HoloPanels/compare/v1.0.0...v2.0.0) (2026-08-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename package and groupId from dev.aether to dev.bwmp
+
+### Features
+
+* add bStats and telemetry metrics ([ee6affb](https://github.com/bwmp-dev/HoloPanels/commit/ee6affbef6350f02c6d8d8770276c4e88a3b75e8))
+* add scalable, hoverable panel layouts ([2d355c6](https://github.com/bwmp-dev/HoloPanels/commit/2d355c6787863804c28c6f8f6f32ee7ff5d50cb9))
+* Enhance HoloPanels plugin with new features and improvements ([641bd5d](https://github.com/bwmp-dev/HoloPanels/commit/641bd5dea5ee67ed1ef651e799df06c603a9c294))
+
+
+### Bug Fixes
+
+* bump Keystone parent to 1.1.0 ([645a2bb](https://github.com/bwmp-dev/HoloPanels/commit/645a2bb610226840da13c56d447c9de70dd8e7f3))
+
+
+### Code Refactoring
+
+* rename package and groupId from dev.aether to dev.bwmp ([7a29fc8](https://github.com/bwmp-dev/HoloPanels/commit/7a29fc8620f2710863dc91a278a4e6e8ac33e719))
+
 ## 1.0.0 (2026-08-10)
 
 

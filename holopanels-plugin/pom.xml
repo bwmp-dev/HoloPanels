@@ -17,7 +17,7 @@
             token is left unwritten even in prose: the updater matches it by
             raw string.
         -->
-        <version>1.0.2</version>
+        <version>1.1.0</version>
         <!--
             Empty, so Maven resolves the parent from a repository rather than a
             path on disk. It used to point at ../../Keystone, which only exists
